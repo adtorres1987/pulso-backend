@@ -8,6 +8,7 @@ import { DeleteRoleUseCase } from '../application/use-cases/DeleteRoleUseCase';
 import { RoleController } from './RoleController';
 import { validateCreateRole, validateUpdateRole } from './validators/role.validator';
 import { authenticate } from '../../../middlewares/auth';
+import { authorize } from '../../../middlewares/authorize';
 
 const router = Router();
 
@@ -21,10 +22,12 @@ const roleController = new RoleController(
   new DeleteRoleUseCase(roleRepository),
 );
 
-router.get('/', authenticate, roleController.getAll);
-router.get('/:id', authenticate, roleController.getOne);
-router.post('/', authenticate, validateCreateRole, roleController.create);
-router.patch('/:id', authenticate, validateUpdateRole, roleController.update);
-router.delete('/:id', authenticate, roleController.remove);
+const adminOnly = authorize(['admin', 'super_admin']);
+
+router.get('/', authenticate, adminOnly, roleController.getAll);
+router.get('/:id', authenticate, adminOnly, roleController.getOne);
+router.post('/', authenticate, adminOnly, validateCreateRole, roleController.create);
+router.patch('/:id', authenticate, adminOnly, validateUpdateRole, roleController.update);
+router.delete('/:id', authenticate, adminOnly, roleController.remove);
 
 export default router;

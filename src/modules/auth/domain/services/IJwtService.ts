@@ -1,9 +1,14 @@
-export interface JwtPayload {
+export interface JwtSignPayload {
   userId: string;
   email: string;
 }
 
+export interface JwtPayload extends JwtSignPayload {
+  jti: string;
+  exp: number;
+}
+
 export interface IJwtService {
-  sign(payload: JwtPayload): string;
+  sign(payload: JwtSignPayload): string;
   verify(token: string): JwtPayload;
 }

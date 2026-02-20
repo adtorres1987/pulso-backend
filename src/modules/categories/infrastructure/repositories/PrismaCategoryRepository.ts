@@ -17,11 +17,15 @@ const categorySelect = {
 
 export class PrismaCategoryRepository implements ICategoryRepository {
   async findAll(): Promise<CategoryResult[]> {
-    return prisma.category.findMany({ select: categorySelect, orderBy: { name: 'asc' } });
+    return prisma.category.findMany({
+      where: { deletedAt: null },
+      select: categorySelect,
+      orderBy: { name: 'asc' },
+    });
   }
 
   async findById(id: string): Promise<CategoryResult | null> {
-    return prisma.category.findUnique({ where: { id }, select: categorySelect });
+    return prisma.category.findFirst({ where: { id, deletedAt: null }, select: categorySelect });
   }
 
   async create(data: CreateCategoryData): Promise<CategoryResult> {
@@ -44,6 +48,6 @@ export class PrismaCategoryRepository implements ICategoryRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await prisma.category.delete({ where: { id } });
+    await prisma.category.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 }

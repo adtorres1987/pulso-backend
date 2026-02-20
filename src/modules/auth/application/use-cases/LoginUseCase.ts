@@ -33,6 +33,7 @@ export class LoginUseCase {
         email: user.email,
         language: user.language,
         timezone: user.timezone,
+        role: user.role,
       },
     };
   }

@@ -24,6 +24,7 @@ export interface AuthUser {
   passwordHash: string;
   language: string;
   timezone: string;
+  role: string | null;
 }
 
 export interface IUserRepository {

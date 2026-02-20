@@ -4,13 +4,13 @@ Base URL: `http://localhost:3000/api/v1`
 
 ## Authentication
 
-All endpoints (except `/auth/*`) require a Bearer token in the `Authorization` header:
+All endpoints (except `POST /auth/register` and `POST /auth/login`) require a Bearer token in the `Authorization` header:
 
 ```
 Authorization: Bearer <token>
 ```
 
-The token is obtained from `POST /auth/login`.
+The token is obtained from `POST /auth/login`. Use `POST /auth/refresh` to renew it before expiry and `POST /auth/logout` to invalidate it.
 
 ---
 
@@ -41,6 +41,7 @@ Every response follows this shape:
 | `EmotionTag` | `"need"` \| `"impulse"` \| `"emotional"` |
 | `HabitFrequency` | `"daily"` \| `"weekly"` |
 | `InvestmentStrategy` | `"conservative"` \| `"balanced"` \| `"long_term"` |
+| `RoleType` | `"super_admin"` \| `"admin"` \| `"support"` \| `"user"` |
 
 ---
 
@@ -103,16 +104,47 @@ No auth required.
 ```ts
 {
   data: {
-    token: string   // JWT — store this for all subsequent requests
+    token: string        // JWT — store this for all subsequent requests
     user: {
       id: string
       email: string
       language: string
       timezone: string
+      role: string | null  // e.g. "admin", "user", or null if no role assigned
     }
   }
 }
 ```
+
+**Errors**
+- `401` — invalid credentials
+
+---
+
+### `POST /auth/refresh`
+Requires auth. Invalidates the current token and issues a new one with a fresh expiry.
+
+**Response 200**
+```ts
+{
+  data: {
+    token: string  // new JWT — replace the old one immediately
+  }
+}
+```
+
+**Errors**
+- `401` — token expired, invalid, or already revoked
+
+---
+
+### `POST /auth/logout`
+Requires auth. Adds the current token to the Redis blacklist — it will be rejected on any future request.
+
+**Response 204** — no body
+
+**Errors**
+- `401` — token invalid or already revoked
 
 ---
 
@@ -130,12 +162,12 @@ Returns the authenticated user's profile.
     language: string
     timezone: string
     onboardingCompleted: boolean
-    createdAt: string           // ISO date
+    createdAt: string           // ISO datetime
     person: {
       firstName: string
       lastName: string
       phone: string | null
-      birthDate: string | null  // ISO date
+      birthDate: string | null  // ISO datetime
       country: string | null
       avatarUrl: string | null
     } | null
@@ -187,7 +219,12 @@ Update profile fields (all optional).
 
 ## Categories
 
-Categories are global (not scoped per user).
+Categories are global (not scoped per user). Soft-deleted categories are excluded from all responses.
+
+| Action | Required role |
+|--------|--------------|
+| `GET` | Any authenticated user |
+| `POST` / `PATCH` / `DELETE` | `admin` or `super_admin` |
 
 ### `GET /categories`
 
@@ -210,11 +247,12 @@ Categories are global (not scoped per user).
 
 **Response 200** — single category object (same shape as above)
 
-**Errors** — `404` if not found
+**Errors** — `404` if not found or soft-deleted
 
 ---
 
 ### `POST /categories`
+Requires `admin` or `super_admin`.
 
 **Request body**
 ```ts
@@ -227,9 +265,12 @@ Categories are global (not scoped per user).
 
 **Response 201** — created category
 
+**Errors** — `403` if insufficient role
+
 ---
 
 ### `PATCH /categories/:id`
+Requires `admin` or `super_admin`.
 
 **Request body** — all fields optional
 ```ts
@@ -242,11 +283,16 @@ Categories are global (not scoped per user).
 
 **Response 200** — updated category
 
+**Errors** — `403` if insufficient role · `404` if not found
+
 ---
 
 ### `DELETE /categories/:id`
+Requires `admin` or `super_admin`. Performs a **soft delete** — the category is hidden but not removed from the database.
 
 **Response 204** — no body
+
+**Errors** — `403` if insufficient role · `404` if not found
 
 ---
 
@@ -416,8 +462,8 @@ All scoped to the authenticated user.
   data: Array<{
     id: string
     name: string
-    targetAmount: string   // serialized Decimal
-    currentAmount: string  // serialized Decimal
+    targetAmount: string       // serialized Decimal
+    currentAmount: string      // serialized Decimal
     targetDate: string | null  // ISO datetime
     createdAt: string
   }>
@@ -653,14 +699,83 @@ All scoped to the authenticated user.
 
 ---
 
+## Roles
+Requires `admin` or `super_admin` for all operations. Soft-deleted roles are excluded from all responses.
+
+### `GET /roles`
+
+**Response 200**
+```ts
+{
+  data: Array<{
+    id: string
+    name: "super_admin" | "admin" | "support" | "user"
+    description: string | null
+    createdAt: string
+    permissions: string[]  // e.g. ["transactions:read", "users:write"]
+  }>
+}
+```
+
+---
+
+### `GET /roles/:id`
+
+**Response 200** — single role (same shape as above)
+
+**Errors** — `403` if insufficient role · `404` if not found
+
+---
+
+### `POST /roles`
+
+**Request body**
+```ts
+{
+  name: "super_admin" | "admin" | "support" | "user"
+  description?: string
+}
+```
+
+**Response 201** — created role
+
+**Errors** — `403` if insufficient role · `409` if name already exists
+
+---
+
+### `PATCH /roles/:id`
+
+**Request body**
+```ts
+{
+  description?: string
+}
+```
+
+**Response 200** — updated role
+
+**Errors** — `403` if insufficient role · `404` if not found
+
+---
+
+### `DELETE /roles/:id`
+Performs a **soft delete** — the role is hidden but not removed from the database.
+
+**Response 204** — no body
+
+**Errors** — `403` if insufficient role · `404` if not found
+
+---
+
 ## Common HTTP status codes
 
 | Code | Meaning |
 |------|---------|
 | `200` | OK |
 | `201` | Created |
-| `204` | No Content (delete success) |
-| `401` | Unauthorized — missing/invalid token, or wrong current password |
+| `204` | No Content (delete / logout success) |
+| `401` | Unauthorized — missing/invalid/expired token, wrong password, or revoked token |
+| `403` | Forbidden — authenticated but insufficient role |
 | `404` | Not found (or not owned by you) |
 | `409` | Conflict — e.g. snapshot for today already exists |
 | `422` | Validation error — `errors` field contains field-level messages |
@@ -668,10 +783,33 @@ All scoped to the authenticated user.
 
 ---
 
+## Token lifecycle
+
+```
+POST /auth/login
+  → token (JWT with jti claim, expires in JWT_EXPIRES_IN)
+
+Every request
+  → Authorization: Bearer <token>
+  → Server checks: valid signature + not in Redis blacklist
+
+POST /auth/refresh  (before token expires)
+  → old token added to Redis blacklist
+  → new token returned
+
+POST /auth/logout
+  → token added to Redis blacklist with TTL = remaining expiry
+  → token is immediately rejected on any future request
+```
+
+---
+
 ## Notes for frontend integration
 
 - **Decimal fields** (`amount`, `targetAmount`, `currentAmount`, `monthlyAmount`, `expectedReturn`) are returned as **strings** to preserve precision. Parse with `parseFloat()` or a decimal library as needed.
 - **Date fields** are returned as ISO 8601 strings. Dates sent to the API must be `"YYYY-MM-DD"` for date-only fields and full ISO datetime (e.g. `"2026-02-19T10:30:00.000Z"`) for datetime fields.
-- **Ownership**: user-scoped resources return `404` (not `403`) when the resource does not belong to the authenticated user, to avoid leaking resource existence.
-- **Snapshot uniqueness**: only one snapshot per calendar day (UTC). Check `GET /snapshots/today` before attempting `POST /snapshots`.
-- **Habit log idempotency**: `POST /habits/:id/logs` is safe to call multiple times for the same date — it will update the existing entry.
+- **`user.role` on login** — use this field to conditionally show admin UI sections without an extra API call.
+- **Soft deletes** — deleted roles and categories are excluded automatically. There is no restore endpoint.
+- **Ownership** — user-scoped resources return `404` (not `403`) when the resource does not belong to the authenticated user, to avoid leaking resource existence.
+- **Snapshot uniqueness** — only one snapshot per calendar day (UTC). Check `GET /snapshots/today` before attempting `POST /snapshots`.
+- **Habit log idempotency** — `POST /habits/:id/logs` is safe to call multiple times for the same date — it will update the existing entry.

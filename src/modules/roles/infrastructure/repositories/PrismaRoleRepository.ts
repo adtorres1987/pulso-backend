@@ -34,6 +34,7 @@ const toRoleResult = (raw: {
 export class PrismaRoleRepository implements IRoleRepository {
   async findAll(): Promise<RoleResult[]> {
     const roles = await prisma.role.findMany({
+      where: { deletedAt: null },
       select: roleSelect,
       orderBy: { createdAt: 'asc' },
     });
@@ -41,15 +42,15 @@ export class PrismaRoleRepository implements IRoleRepository {
   }
 
   async findById(id: string): Promise<RoleResult | null> {
-    const role = await prisma.role.findUnique({
-      where: { id },
+    const role = await prisma.role.findFirst({
+      where: { id, deletedAt: null },
       select: roleSelect,
     });
     return role ? toRoleResult(role) : null;
   }
 
   async nameExists(name: RoleType): Promise<boolean> {
-    const count = await prisma.role.count({ where: { name } });
+    const count = await prisma.role.count({ where: { name, deletedAt: null } });
     return count > 0;
   }
 
@@ -71,6 +72,6 @@ export class PrismaRoleRepository implements IRoleRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await prisma.role.delete({ where: { id } });
+    await prisma.role.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 }

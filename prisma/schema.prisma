@@ -61,6 +61,7 @@ model Role {
   name        RoleType         @unique
   description String?
   createdAt   DateTime         @default(now())
+  deletedAt   DateTime?
 
   permissions RolePermission[]
   users       User[]
@@ -170,6 +171,7 @@ model Category {
   icon         String?
   type         TransactionType
   isSystem     Boolean         @default(false)
+  deletedAt    DateTime?
 
   transactions Transaction[]
 

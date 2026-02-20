@@ -8,6 +8,7 @@ import { DeleteCategoryUseCase } from '../application/use-cases/DeleteCategoryUs
 import { CategoryController } from './CategoryController';
 import { validateCreateCategory, validateUpdateCategory } from './validators/category.validator';
 import { authenticate } from '../../../middlewares/auth';
+import { authorize } from '../../../middlewares/authorize';
 
 const router = Router();
 
@@ -20,10 +21,12 @@ const categoryController = new CategoryController(
   new DeleteCategoryUseCase(categoryRepository),
 );
 
+const adminOnly = authorize(['admin', 'super_admin']);
+
 router.get('/', authenticate, categoryController.getAll);
 router.get('/:id', authenticate, categoryController.getOne);
-router.post('/', authenticate, validateCreateCategory, categoryController.create);
-router.patch('/:id', authenticate, validateUpdateCategory, categoryController.update);
-router.delete('/:id', authenticate, categoryController.remove);
+router.post('/', authenticate, adminOnly, validateCreateCategory, categoryController.create);
+router.patch('/:id', authenticate, adminOnly, validateUpdateCategory, categoryController.update);
+router.delete('/:id', authenticate, adminOnly, categoryController.remove);
 
 export default router;

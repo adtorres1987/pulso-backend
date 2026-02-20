@@ -8,6 +8,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16),
   JWT_EXPIRES_IN: z.string().default('7d'),
   CORS_ORIGIN: z.string().default('*'),
+  REDIS_URL: z.string().default('redis://localhost:6379'),
 });
 
 const parsed = envSchema.safeParse(process.env);

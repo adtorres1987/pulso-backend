@@ -14,5 +14,6 @@ export interface LoginResponseDto {
     email: string;
     language: string;
     timezone: string;
+    role: string | null;
   };
 }
