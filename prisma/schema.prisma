@@ -1,0 +1,231 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+////////////////////
+/// ENUMS
+////////////////////
+
+enum Language {
+  es
+  en
+}
+
+enum Mood {
+  calm
+  stressed
+  confident
+  neutral
+}
+
+enum TransactionType {
+  expense
+  income
+}
+
+enum EmotionTag {
+  need
+  impulse
+  emotional
+}
+
+enum HabitFrequency {
+  daily
+  weekly
+}
+
+enum InvestmentStrategy {
+  conservative
+  balanced
+  long_term
+}
+
+enum RoleType {
+  super_admin
+  admin
+  support
+  user
+}
+
+////////////////////
+/// MODELS
+////////////////////
+
+model Role {
+  id          String           @id @default(uuid())
+  name        RoleType         @unique
+  description String?
+  createdAt   DateTime         @default(now())
+
+  permissions RolePermission[]
+  users       User[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  action      String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id                  String              @id @default(uuid())
+  email               String              @unique
+  passwordHash        String
+  language            Language            @default(es)
+  timezone            String
+  onboardingCompleted Boolean             @default(false)
+  createdAt           DateTime            @default(now())
+
+  roleId              String?
+  role                Role?               @relation(fields: [roleId], references: [id])
+
+  person              Person?
+  dailySnapshots      DailySnapshot[]
+  transactions        Transaction[]
+  habits              Habit[]
+  savingGoals         SavingGoal[]
+  investmentProfiles  InvestmentProfile[]
+
+  @@map("users")
+}
+
+model Person {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  firstName   String
+  lastName    String
+  phone       String?
+  birthDate   DateTime?
+  country     String?
+  avatarUrl   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@map("persons")
+}
+
+model DailySnapshot {
+  id             String        @id @default(uuid())
+  userId         String
+  date           DateTime
+  mood           Mood?
+  reflection     String?
+  consciousScore Int?
+  createdAt      DateTime      @default(now())
+
+  user           User          @relation(fields: [userId], references: [id])
+  transactions   Transaction[]
+
+  @@unique([userId, date])
+  @@map("daily_snapshots")
+}
+
+model Transaction {
+  id              String          @id @default(uuid())
+  userId          String
+  dailySnapshotId String?
+  amount          Decimal
+  type            TransactionType
+  emotionTag      EmotionTag?
+  note            String?
+  occurredAt      DateTime
+  createdAt       DateTime        @default(now())
+
+  user            User            @relation(fields: [userId], references: [id])
+  dailySnapshot   DailySnapshot?  @relation(fields: [dailySnapshotId], references: [id])
+  category        Category?       @relation(fields: [categoryId], references: [id])
+  categoryId      String?
+
+  @@map("transactions")
+}
+
+model Category {
+  id           String          @id @default(uuid())
+  name         String
+  icon         String?
+  type         TransactionType
+  isSystem     Boolean         @default(false)
+
+  transactions Transaction[]
+
+  @@map("categories")
+}
+
+model Habit {
+  id        String         @id @default(uuid())
+  userId    String
+  name      String
+  frequency HabitFrequency
+  active    Boolean        @default(true)
+  createdAt DateTime       @default(now())
+
+  user      User           @relation(fields: [userId], references: [id])
+  logs      HabitLog[]
+
+  @@map("habits")
+}
+
+model HabitLog {
+  id        String   @id @default(uuid())
+  habitId   String
+  date      DateTime
+  completed Boolean
+  createdAt DateTime @default(now())
+
+  habit     Habit    @relation(fields: [habitId], references: [id])
+
+  @@unique([habitId, date])
+  @@map("habit_logs")
+}
+
+model SavingGoal {
+  id            String    @id @default(uuid())
+  userId        String
+  name          String
+  targetAmount  Decimal
+  currentAmount Decimal   @default(0)
+  targetDate    DateTime?
+  createdAt     DateTime  @default(now())
+
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@map("saving_goals")
+}
+
+model InvestmentProfile {
+  id             String             @id @default(uuid())
+  userId         String
+  strategy       InvestmentStrategy
+  monthlyAmount  Decimal
+  expectedReturn Decimal
+  createdAt      DateTime           @default(now())
+
+  user           User               @relation(fields: [userId], references: [id])
+
+  @@map("investment_profiles")
+}
