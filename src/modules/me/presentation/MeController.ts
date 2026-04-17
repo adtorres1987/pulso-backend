@@ -33,7 +33,7 @@ export class MeController {
   password = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       await this.changePassword.execute(req.userId!, req.body);
-      sendSuccess(res, null, 200, 'Password changed');
+      sendSuccess(res, null, 200, 'Contraseña actualizada correctamente');
     } catch (err) {
       next(err);
     }

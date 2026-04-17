@@ -9,10 +9,16 @@ export const UpdateProfileSchema = z.object({
   avatarUrl: z.string().url().optional(),
 });
 
-export const ChangePasswordSchema = z.object({
-  currentPassword: z.string().min(1),
-  newPassword: z.string().min(8),
-});
+export const ChangePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(8),
+    confirmPassword: z.string().min(1),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
+  });
 
 export type UpdateProfileDto = z.infer<typeof UpdateProfileSchema>;
 export type ChangePasswordDto = z.infer<typeof ChangePasswordSchema>;

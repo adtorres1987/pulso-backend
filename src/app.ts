@@ -15,6 +15,7 @@ import snapshotRoutes from './modules/snapshots/presentation/snapshot.routes';
 import savingGoalRoutes from './modules/saving-goals/presentation/saving-goal.routes';
 import habitRoutes from './modules/habits/presentation/habit.routes';
 import investmentProfileRoutes from './modules/investment-profiles/presentation/investment-profile.routes';
+import adminUserRoutes from './modules/admin-users/presentation/admin-user.routes';
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/api/v1/snapshots', snapshotRoutes);
 app.use('/api/v1/saving-goals', savingGoalRoutes);
 app.use('/api/v1/habits', habitRoutes);
 app.use('/api/v1/investment-profiles', investmentProfileRoutes);
+app.use('/api/v1/admin/users', adminUserRoutes);
 
 // Error handling
 app.use(notFound);
