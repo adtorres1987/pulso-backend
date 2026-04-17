@@ -109,6 +109,7 @@ model User {
   habits              Habit[]
   savingGoals         SavingGoal[]
   investmentProfiles  InvestmentProfile[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -230,4 +231,16 @@ model InvestmentProfile {
   user           User               @relation(fields: [userId], references: [id])
 
   @@map("investment_profiles")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("password_reset_tokens")
 }

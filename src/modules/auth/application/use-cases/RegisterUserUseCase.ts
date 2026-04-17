@@ -21,6 +21,7 @@ export class RegisterUserUseCase {
       timezone: dto.timezone,
       firstName: dto.firstName,
       lastName: dto.lastName,
+      roleName: dto.role,
     });
 
     return user;

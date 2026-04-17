@@ -65,12 +65,13 @@ No auth required.
 **Request body**
 ```ts
 {
-  email: string          // valid email
-  password: string       // min 8 chars
-  language?: "es" | "en" // default: "es"
-  timezone: string       // e.g. "America/Mexico_City"
-  firstName: string      // min 2 chars
-  lastName: string       // min 2 chars
+  email: string                                              // valid email
+  password: string                                           // min 8 chars
+  language?: "es" | "en"                                    // default: "es"
+  timezone: string                                           // e.g. "America/Mexico_City"
+  firstName: string                                          // min 2 chars
+  lastName: string                                           // min 2 chars
+  role?: "super_admin" | "admin" | "support" | "user"       // optional — assigns role on creation
 }
 ```
 
@@ -82,10 +83,14 @@ No auth required.
     email: string
     language: string
     timezone: string
+    role: string | null  // assigned role, or null if none provided
     person: { firstName: string; lastName: string }
   }
 }
 ```
+
+**Errors**
+- `409` — email already registered
 
 ---
 
@@ -145,6 +150,47 @@ Requires auth. Adds the current token to the Redis blacklist — it will be reje
 
 **Errors**
 - `401` — token invalid or already revoked
+
+---
+
+### `POST /auth/forgot-password`
+No auth required. Sends a password reset email if the address is registered.
+
+> Always returns `200` regardless of whether the email exists — to avoid leaking account information.
+
+**Request body**
+```ts
+{
+  email: string  // valid email
+}
+```
+
+**Response 200**
+```json
+{ "success": true, "data": null, "message": "If that email is registered, a reset link has been sent" }
+```
+
+---
+
+### `POST /auth/reset-password`
+No auth required. Resets the password using the token received by email.
+
+**Request body**
+```ts
+{
+  token: string       // reset token from the email link
+  newPassword: string // min 8 chars
+}
+```
+
+**Response 200**
+```json
+{ "success": true, "data": null, "message": "Password updated successfully" }
+```
+
+**Errors**
+- `400` — token invalid or expired (tokens expire after 1 hour)
+- `422` — validation error
 
 ---
 
