@@ -26,8 +26,8 @@ export const TransactionFiltersSchema = z.object({
   type: transactionTypeEnum.optional(),
   categoryId: z.string().uuid().optional(),
   emotionTag: emotionTagEnum.optional(),
-  startDate: z.string().date().optional().transform((v) => (v ? new Date(v) : undefined)),
-  endDate: z.string().date().optional().transform((v) => (v ? new Date(v) : undefined)),
+  startDate: z.string().date().optional().transform((v) => (v ? new Date(`${v}T00:00:00.000Z`) : undefined)),
+  endDate: z.string().date().optional().transform((v) => (v ? new Date(`${v}T23:59:59.999Z`) : undefined)),
 });
 
 export type CreateTransactionDto = z.infer<typeof CreateTransactionSchema>;
