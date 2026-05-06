@@ -4,7 +4,7 @@ Base URL: `http://localhost:3000/api/v1`
 
 ## Authentication
 
-All endpoints (except `POST /auth/register` and `POST /auth/login`) require a Bearer token in the `Authorization` header:
+All endpoints (except `POST /auth/register`, `POST /auth/login`, `POST /auth/forgot-password`, and `POST /auth/reset-password`) require a Bearer token in the `Authorization` header:
 
 ```
 Authorization: Bearer <token>
@@ -26,7 +26,7 @@ Every response follows this shape:
 { success: false, error: string }
 
 // Validation error (422)
-{ success: false, errors: Record<string, string[]> }
+{ success: false, fieldErrors: Record<string, string[]> }
 ```
 
 ---
@@ -42,6 +42,8 @@ Every response follows this shape:
 | `HabitFrequency` | `"daily"` \| `"weekly"` |
 | `InvestmentStrategy` | `"conservative"` \| `"balanced"` \| `"long_term"` |
 | `RoleType` | `"super_admin"` \| `"admin"` \| `"support"` \| `"user"` |
+| `SubscriptionStatus` | `"trial"` \| `"active"` \| `"expired"` \| `"cancelled"` |
+| `GroupMemberRole` | `"owner"` \| `"member"` |
 
 ---
 
@@ -60,7 +62,7 @@ No auth required.
 ## Auth
 
 ### `POST /auth/register`
-No auth required.
+No auth required. Creates the user, their person profile, and a trial subscription (using the first active plan and `trial_days` from AppConfig).
 
 **Request body**
 ```ts
@@ -263,14 +265,70 @@ Update profile fields (all optional).
 
 ---
 
+## Subscriptions
+
+### `GET /subscriptions/me`
+Returns the authenticated user's subscription, including the linked plan.
+
+**Response 200**
+```ts
+{
+  data: {
+    id: string
+    userId: string
+    planId: string
+    status: "trial" | "active" | "expired" | "cancelled"
+    trialEndsAt: string          // ISO datetime
+    currentPeriodStart: string   // ISO datetime
+    currentPeriodEnd: string     // ISO datetime
+    discountPercent: string      // serialized Decimal — e.g. "10.00" (group discount applied)
+    cancelledAt: string | null   // ISO datetime
+    createdAt: string
+    plan: {
+      id: string
+      name: string
+      priceAmount: string        // serialized Decimal
+      currency: string           // e.g. "USD"
+      intervalDays: number       // billing cycle length in days
+    }
+  } | null
+}
+```
+
+**Errors**
+- `404` — no subscription found
+
+---
+
+### `DELETE /subscriptions/me`
+Cancels the authenticated user's subscription. Sets `status` to `"cancelled"` and records `cancelledAt`.
+
+**Response 200**
+```ts
+{
+  data: { /* same shape as GET /subscriptions/me */ }
+  message: "Subscription cancelled"
+}
+```
+
+---
+
 ## Categories
 
-Categories are global (not scoped per user). Soft-deleted categories are excluded from all responses.
+Categories can be **global** (created by admin, `userId: null`) or **personal** (created by subscribed users, `userId` is set). Soft-deleted categories are excluded from all responses.
 
-| Action | Required role |
-|--------|--------------|
-| `GET` | Any authenticated user |
-| `POST` / `PATCH` / `DELETE` | `admin` or `super_admin` |
+`GET` returns both global categories and the authenticated user's own categories combined.
+
+| Action | Required |
+|--------|----------|
+| `GET /categories` | Any authenticated user |
+| `GET /categories/:id` | Any authenticated user |
+| `POST /categories/admin` | `admin` or `super_admin` |
+| `PATCH /categories/admin/:id` | `admin` or `super_admin` |
+| `DELETE /categories/admin/:id` | `admin` or `super_admin` |
+| `POST /categories` | Active or trial subscription |
+| `PATCH /categories/:id` | Active or trial subscription (must own the category) |
+| `DELETE /categories/:id` | Active or trial subscription (must own the category) |
 
 ### `GET /categories`
 
@@ -279,6 +337,7 @@ Categories are global (not scoped per user). Soft-deleted categories are exclude
 {
   data: Array<{
     id: string
+    userId: string | null   // null = global; UUID = user-owned
     name: string
     icon: string | null
     type: "expense" | "income"
@@ -297,8 +356,8 @@ Categories are global (not scoped per user). Soft-deleted categories are exclude
 
 ---
 
-### `POST /categories`
-Requires `admin` or `super_admin`.
+### `POST /categories/admin`
+Requires `admin` or `super_admin`. Creates a **global** category (`userId: null`).
 
 **Request body**
 ```ts
@@ -311,12 +370,14 @@ Requires `admin` or `super_admin`.
 
 **Response 201** — created category
 
-**Errors** — `403` if insufficient role
+**Errors**
+- `403` — insufficient role
+- `409` — a global category with that name already exists
 
 ---
 
-### `PATCH /categories/:id`
-Requires `admin` or `super_admin`.
+### `PATCH /categories/admin/:id`
+Requires `admin` or `super_admin`. Updates a global category.
 
 **Request body** — all fields optional
 ```ts
@@ -329,16 +390,63 @@ Requires `admin` or `super_admin`.
 
 **Response 200** — updated category
 
-**Errors** — `403` if insufficient role · `404` if not found
+**Errors** — `403` · `404`
+
+---
+
+### `DELETE /categories/admin/:id`
+Requires `admin` or `super_admin`. Performs a **soft delete**.
+
+**Response 204** — no body
+
+**Errors** — `403` · `404`
+
+---
+
+### `POST /categories`
+Requires active or trial subscription. Creates a **personal** category scoped to the authenticated user.
+
+**Request body**
+```ts
+{
+  name: string   // must be unique vs. global categories AND user's own categories (case-insensitive)
+  icon?: string
+  type: "expense" | "income"
+}
+```
+
+**Response 201** — created category
+
+**Errors**
+- `403` — no active subscription
+- `409` — name conflicts with an existing global or personal category
+
+---
+
+### `PATCH /categories/:id`
+Requires active or trial subscription. Updates the user's own category.
+
+**Request body** — all optional
+```ts
+{
+  name?: string
+  icon?: string
+  type?: "expense" | "income"
+}
+```
+
+**Response 200** — updated category
+
+**Errors** — `403` · `404` (not found or not owned by user)
 
 ---
 
 ### `DELETE /categories/:id`
-Requires `admin` or `super_admin`. Performs a **soft delete** — the category is hidden but not removed from the database.
+Requires active or trial subscription. Soft-deletes the user's own category.
 
 **Response 204** — no body
 
-**Errors** — `403` if insufficient role · `404` if not found
+**Errors** — `403` · `404`
 
 ---
 
@@ -363,11 +471,12 @@ endDate     "YYYY-MM-DD"
   data: Array<{
     id: string
     amount: string            // serialized Decimal
-    type: string
+    type: "expense" | "income"
     emotionTag: string | null
     note: string | null
     occurredAt: string        // ISO datetime
     createdAt: string
+    categoryId: string | null // UUID of the linked category
     category: {
       id: string
       name: string
@@ -413,7 +522,7 @@ endDate     "YYYY-MM-DD"
 {
   amount?: number
   type?: "expense" | "income"
-  occurredAt?: string          // ISO datetime
+  occurredAt?: string
   emotionTag?: "need" | "impulse" | "emotional"
   note?: string
   categoryId?: string
@@ -745,7 +854,206 @@ All scoped to the authenticated user.
 
 ---
 
+## Groups
+
+All group endpoints require an active or trial subscription (`requireSubscription` middleware). Groups are scoped to members — you can only see and operate on groups you belong to.
+
+### Group object shape
+```ts
+{
+  id: string
+  name: string
+  createdBy: string    // userId of the owner
+  createdAt: string    // ISO datetime
+  members: Array<{
+    id: string         // GroupMember id
+    userId: string
+    role: "owner" | "member"
+    joinedAt: string   // ISO datetime
+  }>
+}
+```
+
+---
+
+### `GET /groups`
+Returns all groups the authenticated user belongs to.
+
+**Response 200**
+```ts
+{
+  data: GroupObject[]
+}
+```
+
+---
+
+### `GET /groups/:id`
+
+**Response 200** — single group (same shape as above)
+
+**Errors** — `404` if not found or user is not a member
+
+---
+
+### `POST /groups`
+Creates a group. The authenticated user becomes the **owner**.
+
+**Request body**
+```ts
+{
+  name: string  // 1–100 chars
+}
+```
+
+**Response 201**
+```ts
+{
+  data: GroupObject
+  message: "Group created"
+}
+```
+
+---
+
+### `PATCH /groups/:id`
+Only the group **owner** can rename the group.
+
+**Request body**
+```ts
+{
+  name: string  // 1–100 chars
+}
+```
+
+**Response 200**
+```ts
+{
+  data: GroupObject
+  message: "Group updated"
+}
+```
+
+**Errors** — `403` if not the owner · `404`
+
+---
+
+### `DELETE /groups/:id`
+Only the group **owner** can delete the group.
+
+**Response 204** — no body
+
+**Errors** — `403` if not the owner · `404`
+
+---
+
+### `POST /groups/:id/members`
+Adds a user to the group. Only the group **owner** can add members. Adding a member recalculates the group discount across all active/trial members.
+
+**Request body**
+```ts
+{
+  userId: string  // UUID of the user to add
+}
+```
+
+**Response 201**
+```ts
+{
+  data: {
+    id: string
+    userId: string
+    role: "owner" | "member"
+    joinedAt: string
+  }
+  message: "Member added"
+}
+```
+
+**Errors**
+- `403` — not the owner, or user has no active subscription
+- `404` — group not found
+- `409` — user is already a member
+
+---
+
+### `DELETE /groups/:id/members/:userId`
+Removes a member from the group. Only the group **owner** can remove members. Removing recalculates the group discount.
+
+**Response 204** — no body
+
+**Errors** — `403` if not the owner · `404`
+
+---
+
+### `POST /groups/:id/expenses`
+Records a shared expense. The `shares` array defines how the total is split among group members (by `groupMemberId`). The authenticated user must be a group member.
+
+**Request body**
+```ts
+{
+  amount: number                          // positive — total expense amount
+  description: string                     // min 1 char
+  occurredAt: string                      // ISO datetime
+  shares: Array<{
+    groupMemberId: string                 // UUID of the GroupMember record
+    amount: number                        // positive — this member's share
+  }>                                      // min 1 share required
+}
+```
+
+**Response 201**
+```ts
+{
+  data: {
+    id: string
+    groupId: string
+    paidById: string       // userId of who paid
+    amount: string         // serialized Decimal
+    description: string
+    occurredAt: string     // ISO datetime
+    createdAt: string
+    shares: Array<{
+      id: string
+      groupMemberId: string
+      amount: string         // serialized Decimal
+      includeInPersonal: boolean
+      transactionId: string | null  // null until linked to a personal transaction
+    }>
+  }
+  message: "Expense created"
+}
+```
+
+**Errors** — `403` · `404`
+
+---
+
+### `PATCH /groups/:id/expenses/:expenseId/shares/:shareId/include`
+Links a group expense share to the authenticated user's personal transactions. Creates a `Transaction` record and marks `includeInPersonal: true`. Can only be done once per share (the `transactionId` becomes non-null and the endpoint returns `409` if called again).
+
+**No request body required.**
+
+**Response 200**
+```ts
+{
+  data: {
+    id: string
+    groupMemberId: string
+    amount: string
+    includeInPersonal: boolean  // now true
+    transactionId: string       // UUID of the created personal transaction
+  }
+  message: "Share linked to personal transactions"
+}
+```
+
+**Errors** — `403` · `404` · `409` if already linked
+
+---
+
 ## Roles
+
 Requires `admin` or `super_admin` for all operations. Soft-deleted roles are excluded from all responses.
 
 ### `GET /roles`
@@ -769,7 +1077,7 @@ Requires `admin` or `super_admin` for all operations. Soft-deleted roles are exc
 
 **Response 200** — single role (same shape as above)
 
-**Errors** — `403` if insufficient role · `404` if not found
+**Errors** — `403` · `404`
 
 ---
 
@@ -785,7 +1093,7 @@ Requires `admin` or `super_admin` for all operations. Soft-deleted roles are exc
 
 **Response 201** — created role
 
-**Errors** — `403` if insufficient role · `409` if name already exists
+**Errors** — `403` · `409` if name already exists
 
 ---
 
@@ -800,16 +1108,286 @@ Requires `admin` or `super_admin` for all operations. Soft-deleted roles are exc
 
 **Response 200** — updated role
 
-**Errors** — `403` if insufficient role · `404` if not found
+**Errors** — `403` · `404`
 
 ---
 
 ### `DELETE /roles/:id`
-Performs a **soft delete** — the role is hidden but not removed from the database.
+Performs a **soft delete**.
 
 **Response 204** — no body
 
-**Errors** — `403` if insufficient role · `404` if not found
+**Errors** — `403` · `404`
+
+---
+
+## Permissions
+
+### `GET /permissions`
+
+**Response 200**
+```ts
+{
+  data: Array<{
+    id: string
+    action: string   // format: "resource:operation" e.g. "transactions:read"
+    description: string | null
+    createdAt: string
+  }>
+}
+```
+
+---
+
+### `GET /permissions/:id`
+
+**Response 200** — single permission
+
+**Errors** — `404`
+
+---
+
+### `POST /permissions`
+
+**Request body**
+```ts
+{
+  action: string       // "resource:operation"
+  description?: string
+}
+```
+
+**Response 201** — created permission
+
+---
+
+### `PATCH /permissions/:id`
+
+**Request body** — all optional
+```ts
+{
+  action?: string
+  description?: string
+}
+```
+
+**Response 200** — updated permission
+
+---
+
+### `DELETE /permissions/:id`
+
+**Response 204** — no body
+
+---
+
+## Admin: Users
+
+Requires `admin` or `super_admin` (password reset requires `super_admin`).
+
+### `GET /admin/users`
+
+**Query params** — optional
+```
+search    string       // filters by name or email (partial match)
+isActive  "true" | "false"
+```
+
+**Response 200**
+```ts
+{
+  data: Array<{
+    id: string
+    email: string
+    isActive: boolean
+    language: string
+    timezone: string
+    createdAt: string
+    person: {
+      firstName: string
+      lastName: string
+      phone: string | null
+      country: string | null
+      avatarUrl: string | null
+    } | null
+    role: { id: string; name: string } | null
+  }>
+}
+```
+
+---
+
+### `GET /admin/users/:id`
+
+**Response 200** — single user (same shape as above)
+
+**Errors** — `404`
+
+---
+
+### `PATCH /admin/users/:id`
+
+**Request body** — all optional
+```ts
+{
+  isActive?: boolean
+  language?: "es" | "en"
+  timezone?: string
+  firstName?: string
+  lastName?: string
+}
+```
+
+**Response 200** — updated user
+
+---
+
+### `PATCH /admin/users/:id/password`
+Requires `super_admin`.
+
+**Request body**
+```ts
+{
+  newPassword: string  // min 8 chars
+}
+```
+
+**Response 200**
+```json
+{ "success": true, "data": null, "message": "Password reset successfully" }
+```
+
+---
+
+## Admin: App Config
+
+Requires `admin` or `super_admin`. Manages global key/value settings.
+
+### Known keys
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `trial_days` | integer | `30` | Trial period length for new registrations |
+| `group_discount_percent` | integer | `10` | Discount applied when a group reaches the minimum member threshold |
+
+### `GET /admin/app-config`
+
+**Response 200**
+```ts
+{
+  data: Array<{
+    key: string
+    value: string
+    description: string | null
+    updatedAt: string   // ISO datetime
+  }>
+}
+```
+
+---
+
+### `PATCH /admin/app-config/:key`
+
+**Request body**
+```ts
+{
+  value: string  // min 1 char — always stored as string, even for numeric values
+}
+```
+
+**Response 200**
+```ts
+{
+  data: {
+    key: string
+    value: string
+    description: string | null
+    updatedAt: string
+  }
+}
+```
+
+**Errors** — `404` if key does not exist · `422` validation
+
+---
+
+## Admin: Subscription Plans
+
+Requires `admin` or `super_admin`. The first active plan is used automatically when new users register.
+
+### `GET /admin/subscription-plans`
+
+**Response 200**
+```ts
+{
+  data: Array<{
+    id: string
+    name: string
+    description: string | null
+    priceAmount: string    // serialized Decimal
+    currency: string       // ISO 4217 — e.g. "USD"
+    intervalDays: number   // billing cycle length in days (default: 30)
+    isActive: boolean
+    stripePriceId: string | null
+    createdAt: string      // ISO datetime
+  }>
+}
+```
+
+---
+
+### `GET /admin/subscription-plans/:id`
+
+**Response 200** — single plan (same shape as above)
+
+**Errors** — `404`
+
+---
+
+### `POST /admin/subscription-plans`
+
+**Request body**
+```ts
+{
+  name: string              // min 1 char
+  description?: string
+  priceAmount: number       // positive
+  currency?: string         // 3-char ISO 4217 code — default: "USD"
+  intervalDays?: number     // positive integer — default: 30
+  stripePriceId?: string    // Stripe price ID for payment integration
+}
+```
+
+**Response 201** — created plan (`isActive: true` by default)
+
+---
+
+### `PATCH /admin/subscription-plans/:id`
+
+**Request body** — all optional
+```ts
+{
+  name?: string
+  description?: string
+  priceAmount?: number
+  currency?: string
+  intervalDays?: number
+  isActive?: boolean
+  stripePriceId?: string
+}
+```
+
+**Response 200** — updated plan
+
+**Errors** — `404`
+
+---
+
+### `DELETE /admin/subscription-plans/:id`
+
+**Response 204** — no body
+
+**Errors** — `404`
 
 ---
 
@@ -819,12 +1397,13 @@ Performs a **soft delete** — the role is hidden but not removed from the datab
 |------|---------|
 | `200` | OK |
 | `201` | Created |
-| `204` | No Content (delete / logout success) |
+| `204` | No Content (delete / logout / cancel success) |
+| `400` | Bad Request — e.g. expired reset token |
 | `401` | Unauthorized — missing/invalid/expired token, wrong password, or revoked token |
-| `403` | Forbidden — authenticated but insufficient role |
+| `403` | Forbidden — authenticated but insufficient role or no active subscription |
 | `404` | Not found (or not owned by you) |
-| `409` | Conflict — e.g. snapshot for today already exists |
-| `422` | Validation error — `errors` field contains field-level messages |
+| `409` | Conflict — e.g. snapshot for today already exists, member already in group |
+| `422` | Validation error — `fieldErrors` contains field-level messages |
 | `500` | Internal server error |
 
 ---
@@ -850,12 +1429,36 @@ POST /auth/logout
 
 ---
 
+## Subscription & group discount lifecycle
+
+```
+POST /auth/register
+  → trial subscription created (status: "trial", trialEndsAt = now + trial_days)
+
+Any protected endpoint (requireSubscription middleware)
+  → checks status and expiry dates
+  → if trial expired → status updated to "expired" → 403 returned
+
+POST /groups/:id/members  or  DELETE /groups/:id/members/:userId
+  → recalculates discount for all group members
+  → if activeMembers >= minMembers (from AppConfig): discountPercent = group_discount_percent
+  → otherwise: discountPercent = 0
+
+Effective plan price = priceAmount × (1 - discountPercent / 100)
+```
+
+---
+
 ## Notes for frontend integration
 
-- **Decimal fields** (`amount`, `targetAmount`, `currentAmount`, `monthlyAmount`, `expectedReturn`) are returned as **strings** to preserve precision. Parse with `parseFloat()` or a decimal library as needed.
+- **Decimal fields** (`amount`, `targetAmount`, `currentAmount`, `monthlyAmount`, `expectedReturn`, `priceAmount`, `discountPercent`) are returned as **strings** to preserve precision. Parse with `parseFloat()` or a decimal library as needed.
 - **Date fields** are returned as ISO 8601 strings. Dates sent to the API must be `"YYYY-MM-DD"` for date-only fields and full ISO datetime (e.g. `"2026-02-19T10:30:00.000Z"`) for datetime fields.
 - **`user.role` on login** — use this field to conditionally show admin UI sections without an extra API call.
 - **Soft deletes** — deleted roles and categories are excluded automatically. There is no restore endpoint.
 - **Ownership** — user-scoped resources return `404` (not `403`) when the resource does not belong to the authenticated user, to avoid leaking resource existence.
 - **Snapshot uniqueness** — only one snapshot per calendar day (UTC). Check `GET /snapshots/today` before attempting `POST /snapshots`.
 - **Habit log idempotency** — `POST /habits/:id/logs` is safe to call multiple times for the same date — it will update the existing entry.
+- **Category ownership** — `GET /categories` returns globals + user's own. Use `userId === null` to distinguish global from personal categories in the UI.
+- **Group discount** — `discountPercent` in `GET /subscriptions/me` reflects the current applied discount. Compute effective price as `priceAmount × (1 - discountPercent / 100)`.
+- **Share inclusion** — `PATCH /groups/:id/expenses/:expenseId/shares/:shareId/include` is a one-time action. Once `transactionId` is set, the endpoint returns `409`. Check `includeInPersonal` before showing the button.
+- **Subscription guard** — endpoints protected by `requireSubscription` return `403` with message `"Subscription required. Your trial or plan has expired."` when the user has no active/trial subscription. Redirect to a paywall screen on this error.

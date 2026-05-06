@@ -15,6 +15,10 @@ import { validateLogin } from './validators/login.validator';
 import { validateForgotPassword } from './validators/forgotPassword.validator';
 import { validateResetPassword } from './validators/resetPassword.validator';
 import { authenticate } from '../../../middlewares/auth';
+import { PrismaSubscriptionRepository } from '../../subscriptions/infrastructure/repositories/PrismaSubscriptionRepository';
+import { PrismaSubscriptionPlanRepository } from '../../subscription-plans/infrastructure/repositories/PrismaSubscriptionPlanRepository';
+import { PrismaAppConfigRepository } from '../../app-config/infrastructure/repositories/PrismaAppConfigRepository';
+import { CreateTrialSubscriptionUseCase } from '../../subscriptions/application/use-cases/CreateTrialSubscriptionUseCase';
 
 const router = Router();
 
@@ -23,7 +27,12 @@ const userRepository = new PrismaUserRepository();
 const jwtService = new JwtService();
 const blacklistService = new RedisTokenBlacklistService();
 const emailService = new NodemailerEmailService();
-const registerUserUseCase = new RegisterUserUseCase(userRepository);
+const createTrialSubscription = new CreateTrialSubscriptionUseCase(
+  new PrismaSubscriptionRepository(),
+  new PrismaSubscriptionPlanRepository(),
+  new PrismaAppConfigRepository(),
+);
+const registerUserUseCase = new RegisterUserUseCase(userRepository, createTrialSubscription);
 const loginUseCase = new LoginUseCase(userRepository, jwtService);
 const refreshTokenUseCase = new RefreshTokenUseCase(jwtService, blacklistService);
 const logoutUseCase = new LogoutUseCase(jwtService, blacklistService);

@@ -3,7 +3,7 @@ import { ICategoryRepository, CategoryResult } from '../../domain/repositories/I
 export class GetAllCategoriesUseCase {
   constructor(private readonly categoryRepository: ICategoryRepository) {}
 
-  async execute(): Promise<CategoryResult[]> {
-    return this.categoryRepository.findAll();
+  execute(userId?: string): Promise<CategoryResult[]> {
+    return this.categoryRepository.findAll(userId);
   }
 }

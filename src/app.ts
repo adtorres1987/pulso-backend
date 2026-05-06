@@ -16,6 +16,10 @@ import savingGoalRoutes from './modules/saving-goals/presentation/saving-goal.ro
 import habitRoutes from './modules/habits/presentation/habit.routes';
 import investmentProfileRoutes from './modules/investment-profiles/presentation/investment-profile.routes';
 import adminUserRoutes from './modules/admin-users/presentation/admin-user.routes';
+import appConfigRoutes from './modules/app-config/presentation/app-config.routes';
+import subscriptionPlanRoutes from './modules/subscription-plans/presentation/subscription-plan.routes';
+import subscriptionRoutes from './modules/subscriptions/presentation/subscription.routes';
+import groupRoutes from './modules/groups/presentation/group.routes';
 
 const app = express();
 
@@ -41,6 +45,10 @@ app.use('/api/v1/saving-goals', savingGoalRoutes);
 app.use('/api/v1/habits', habitRoutes);
 app.use('/api/v1/investment-profiles', investmentProfileRoutes);
 app.use('/api/v1/admin/users', adminUserRoutes);
+app.use('/api/v1/admin/app-config', appConfigRoutes);
+app.use('/api/v1/admin/subscription-plans', subscriptionPlanRoutes);
+app.use('/api/v1/subscriptions', subscriptionRoutes);
+app.use('/api/v1/groups', groupRoutes);
 
 // Error handling
 app.use(notFound);

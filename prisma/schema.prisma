@@ -52,9 +52,30 @@ enum RoleType {
   user
 }
 
+enum SubscriptionStatus {
+  trial
+  active
+  expired
+  cancelled
+}
+
+enum GroupMemberRole {
+  owner
+  member
+}
+
 ////////////////////
 /// MODELS
 ////////////////////
+
+model AppConfig {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("app_config")
+}
 
 model Role {
   id          String           @id @default(uuid())
@@ -111,6 +132,11 @@ model User {
   savingGoals         SavingGoal[]
   investmentProfiles  InvestmentProfile[]
   passwordResetTokens PasswordResetToken[]
+  subscription        Subscription?
+  categories          Category[]
+  groupsCreated       Group[]             @relation("GroupCreator")
+  groupMemberships    GroupMember[]
+  groupExpensesPaid   GroupExpense[]      @relation("GroupExpensePayer")
 
   @@map("users")
 }
@@ -149,32 +175,35 @@ model DailySnapshot {
 }
 
 model Transaction {
-  id              String          @id @default(uuid())
-  userId          String
-  dailySnapshotId String?
-  amount          Decimal
-  type            TransactionType
-  emotionTag      EmotionTag?
-  note            String?
-  occurredAt      DateTime
-  createdAt       DateTime        @default(now())
+  id                  String              @id @default(uuid())
+  userId              String
+  dailySnapshotId     String?
+  amount              Decimal
+  type                TransactionType
+  emotionTag          EmotionTag?
+  note                String?
+  occurredAt          DateTime
+  createdAt           DateTime            @default(now())
 
-  user            User            @relation(fields: [userId], references: [id])
-  dailySnapshot   DailySnapshot?  @relation(fields: [dailySnapshotId], references: [id])
-  category        Category?       @relation(fields: [categoryId], references: [id])
-  categoryId      String?
+  user                User                @relation(fields: [userId], references: [id])
+  dailySnapshot       DailySnapshot?      @relation(fields: [dailySnapshotId], references: [id])
+  category            Category?           @relation(fields: [categoryId], references: [id])
+  categoryId          String?
+  groupExpenseShare   GroupExpenseShare?
 
   @@map("transactions")
 }
 
 model Category {
   id           String          @id @default(uuid())
+  userId       String?
   name         String
   icon         String?
   type         TransactionType
   isSystem     Boolean         @default(false)
   deletedAt    DateTime?
 
+  user         User?           @relation(fields: [userId], references: [id])
   transactions Transaction[]
 
   @@map("categories")
@@ -244,4 +273,100 @@ model PasswordResetToken {
   user      User     @relation(fields: [userId], references: [id])
 
   @@map("password_reset_tokens")
+}
+
+model SubscriptionPlan {
+  id           String         @id @default(uuid())
+  name         String
+  description  String?
+  priceAmount  Decimal
+  currency     String         @default("USD")
+  intervalDays Int            @default(30)
+  isActive     Boolean        @default(true)
+  stripePriceId String?
+  createdAt    DateTime       @default(now())
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  userId               String             @unique
+  planId               String
+  status               SubscriptionStatus @default(trial)
+  trialEndsAt          DateTime
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  discountPercent      Decimal            @default(0)
+  cancelledAt          DateTime?
+  stripeSubscriptionId String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user                 User               @relation(fields: [userId], references: [id])
+  plan                 SubscriptionPlan   @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+model Group {
+  id        String        @id @default(uuid())
+  name      String
+  createdBy String
+  createdAt DateTime      @default(now())
+  deletedAt DateTime?
+
+  creator   User          @relation("GroupCreator", fields: [createdBy], references: [id])
+  members   GroupMember[]
+  expenses  GroupExpense[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String          @id @default(uuid())
+  groupId  String
+  userId   String
+  role     GroupMemberRole @default(member)
+  joinedAt DateTime        @default(now())
+
+  group    Group           @relation(fields: [groupId], references: [id])
+  user     User            @relation(fields: [userId], references: [id])
+  shares   GroupExpenseShare[]
+
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+model GroupExpense {
+  id          String             @id @default(uuid())
+  groupId     String
+  paidById    String
+  amount      Decimal
+  description String
+  occurredAt  DateTime
+  createdAt   DateTime           @default(now())
+
+  group       Group              @relation(fields: [groupId], references: [id])
+  paidBy      User               @relation("GroupExpensePayer", fields: [paidById], references: [id])
+  shares      GroupExpenseShare[]
+
+  @@map("group_expenses")
+}
+
+model GroupExpenseShare {
+  id                String       @id @default(uuid())
+  groupExpenseId    String
+  groupMemberId     String
+  amount            Decimal
+  includeInPersonal Boolean      @default(false)
+  transactionId     String?      @unique
+
+  groupExpense      GroupExpense @relation(fields: [groupExpenseId], references: [id])
+  groupMember       GroupMember  @relation(fields: [groupMemberId], references: [id])
+  transaction       Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@map("group_expense_shares")
 }

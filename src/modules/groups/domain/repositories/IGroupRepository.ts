@@ -1,0 +1,63 @@
+export type GroupMemberRole = 'owner' | 'member';
+
+export interface GroupResult {
+  id: string;
+  name: string;
+  createdBy: string;
+  createdAt: Date;
+  members: GroupMemberResult[];
+}
+
+export interface GroupMemberResult {
+  id: string;
+  userId: string;
+  role: GroupMemberRole;
+  joinedAt: Date;
+}
+
+export interface GroupExpenseResult {
+  id: string;
+  groupId: string;
+  paidById: string;
+  amount: string;
+  description: string;
+  occurredAt: Date;
+  createdAt: Date;
+  shares: GroupExpenseShareResult[];
+}
+
+export interface GroupExpenseShareResult {
+  id: string;
+  groupMemberId: string;
+  amount: string;
+  includeInPersonal: boolean;
+  transactionId: string | null;
+}
+
+export interface CreateGroupData {
+  name: string;
+  createdBy: string;
+}
+
+export interface CreateGroupExpenseData {
+  groupId: string;
+  paidById: string;
+  amount: number;
+  description: string;
+  occurredAt: Date;
+  shares: Array<{ groupMemberId: string; amount: number }>;
+}
+
+export interface IGroupRepository {
+  findAllByUser(userId: string): Promise<GroupResult[]>;
+  findByIdAndUser(id: string, userId: string): Promise<GroupResult | null>;
+  create(data: CreateGroupData): Promise<GroupResult>;
+  update(id: string, name: string): Promise<GroupResult>;
+  delete(id: string): Promise<void>;
+  addMember(groupId: string, userId: string): Promise<GroupMemberResult>;
+  removeMember(groupId: string, userId: string): Promise<void>;
+  findMember(groupId: string, userId: string): Promise<GroupMemberResult | null>;
+  createExpense(data: CreateGroupExpenseData): Promise<GroupExpenseResult>;
+  findExpensesByGroup(groupId: string): Promise<GroupExpenseResult[]>;
+  includeShareInPersonal(shareId: string, transactionId: string): Promise<GroupExpenseShareResult>;
+}

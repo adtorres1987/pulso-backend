@@ -5,6 +5,7 @@ import { CreateCategoryUseCase } from '../application/use-cases/CreateCategoryUs
 import { UpdateCategoryUseCase } from '../application/use-cases/UpdateCategoryUseCase';
 import { DeleteCategoryUseCase } from '../application/use-cases/DeleteCategoryUseCase';
 import { sendSuccess } from '../../../utils/response';
+import { AuthRequest } from '../../../types';
 
 export class CategoryController {
   constructor(
@@ -15,9 +16,10 @@ export class CategoryController {
     private readonly deleteCategory: DeleteCategoryUseCase,
   ) {}
 
-  getAll = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // Returns globals + user's own categories
+  getAll = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const categories = await this.getAllCategories.execute();
+      const categories = await this.getAllCategories.execute(req.userId!);
       sendSuccess(res, categories);
     } catch (err) {
       next(err);
@@ -33,7 +35,8 @@ export class CategoryController {
     }
   };
 
-  create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // Admin: creates global category (no userId)
+  createGlobal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const category = await this.createCategory.execute(req.body);
       sendSuccess(res, category, 201, 'Category created');
@@ -42,7 +45,18 @@ export class CategoryController {
     }
   };
 
-  update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // User: creates own category (scoped to userId)
+  createOwn = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const category = await this.createCategory.execute(req.body, req.userId!);
+      sendSuccess(res, category, 201, 'Category created');
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  // Admin: can update any category
+  updateGlobal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const category = await this.updateCategory.execute(req.params.id, req.body);
       sendSuccess(res, category, 200, 'Category updated');
@@ -51,9 +65,30 @@ export class CategoryController {
     }
   };
 
-  remove = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // User: can only update their own categories
+  updateOwn = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const category = await this.updateCategory.execute(req.params.id, req.body, req.userId!);
+      sendSuccess(res, category, 200, 'Category updated');
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  // Admin: can delete any category
+  removeGlobal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       await this.deleteCategory.execute(req.params.id);
+      sendSuccess(res, null, 204);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  // User: can only delete their own categories
+  removeOwn = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.deleteCategory.execute(req.params.id, req.userId!);
       sendSuccess(res, null, 204);
     } catch (err) {
       next(err);
