@@ -17,6 +17,7 @@ const transactionSelect = {
   note: true,
   occurredAt: true,
   createdAt: true,
+  categoryId: true,
   category: { select: { id: true, name: true, icon: true } },
 };
 
@@ -28,6 +29,7 @@ const toResult = (raw: {
   note: string | null;
   occurredAt: Date;
   createdAt: Date;
+  categoryId: string | null;
   category: { id: string; name: string; icon: string | null } | null;
 }): TransactionResult => ({
   ...raw,

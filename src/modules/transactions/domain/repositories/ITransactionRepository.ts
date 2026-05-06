@@ -6,6 +6,7 @@ export interface TransactionResult {
   note: string | null;
   occurredAt: Date;
   createdAt: Date;
+  categoryId: string | null;
   category: { id: string; name: string; icon: string | null } | null;
 }
 
