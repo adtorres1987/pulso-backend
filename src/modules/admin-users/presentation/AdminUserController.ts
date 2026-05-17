@@ -21,7 +21,7 @@ export class AdminUserController {
     try {
       const filters = req.parsedQuery!;
       const result = await this.listClientUsers.execute(filters);
-      sendSuccess(res, result);
+      sendSuccess(res, result.data);
     } catch (err) {
       next(err);
     }

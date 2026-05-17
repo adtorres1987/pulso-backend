@@ -265,6 +265,22 @@ Update profile fields (all optional).
 
 ---
 
+### `POST /me/avatar`
+Uploads a profile picture to Cloudinary and updates `person.avatarUrl`. Send as `multipart/form-data` with the file in the `image` field.
+
+**Request** — `Content-Type: multipart/form-data`
+```
+image  File   // image/* only, max 5 MB
+```
+
+**Response 200** — same shape as `GET /me` (with updated `avatarUrl`)
+
+**Errors**
+- `400` — no file provided or file is not an image
+- `413` — file exceeds 5 MB
+
+---
+
 ## Subscriptions
 
 ### `GET /subscriptions/me`
