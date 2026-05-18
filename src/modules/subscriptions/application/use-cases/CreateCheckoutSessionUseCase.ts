@@ -20,25 +20,31 @@ export class CreateCheckoutSessionUseCase {
     const user = await this.meRepo.findById(userId);
     if (!user) throw new AppError('User not found', 404);
 
-    const stripeData = await this.subscriptionRepo.findStripeData(userId);
-    let stripeCustomerId = stripeData?.stripeCustomerId ?? null;
+    try {
+      const stripeData = await this.subscriptionRepo.findStripeData(userId);
+      let stripeCustomerId = stripeData?.stripeCustomerId ?? null;
 
-    if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({ email: user.email, metadata: { userId } });
-      stripeCustomerId = customer.id;
-      await this.subscriptionRepo.setStripeCustomerId(userId, stripeCustomerId);
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({ email: user.email, metadata: { userId } });
+        stripeCustomerId = customer.id;
+        await this.subscriptionRepo.setStripeCustomerId(userId, stripeCustomerId);
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        customer: stripeCustomerId,
+        payment_method_types: ['card'],
+        line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+        mode: 'subscription',
+        success_url: `${env.FRONTEND_URL}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${env.FRONTEND_URL}/subscription/cancel`,
+        metadata: { userId, planId },
+      });
+
+      return { checkoutUrl: session.url! };
+    } catch (err) {
+      if (err instanceof AppError) throw err;
+      const stripeMessage = (err as { message?: string }).message ?? 'Stripe error';
+      throw new AppError(`Payment error: ${stripeMessage}`, 502);
     }
-
-    const session = await stripe.checkout.sessions.create({
-      customer: stripeCustomerId,
-      payment_method_types: ['card'],
-      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
-      mode: 'subscription',
-      success_url: `${env.FRONTEND_URL}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${env.FRONTEND_URL}/subscription/cancel`,
-      metadata: { userId },
-    });
-
-    return { checkoutUrl: session.url! };
   }
 }

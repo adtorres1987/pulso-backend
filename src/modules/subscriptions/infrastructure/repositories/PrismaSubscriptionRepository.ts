@@ -120,7 +120,7 @@ export class PrismaSubscriptionRepository implements ISubscriptionRepository {
   }
 
   async setStripeCustomerId(userId: string, stripeCustomerId: string): Promise<void> {
-    await prisma.subscription.update({ where: { userId }, data: { stripeCustomerId } });
+    await prisma.subscription.updateMany({ where: { userId }, data: { stripeCustomerId } });
   }
 
   async linkStripeSubscription(userId: string, stripeSubscriptionId: string): Promise<void> {

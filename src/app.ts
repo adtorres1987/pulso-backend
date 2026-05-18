@@ -19,6 +19,7 @@ import investmentProfileRoutes from './modules/investment-profiles/presentation/
 import adminUserRoutes from './modules/admin-users/presentation/admin-user.routes';
 import appConfigRoutes from './modules/app-config/presentation/app-config.routes';
 import subscriptionPlanRoutes from './modules/subscription-plans/presentation/subscription-plan.routes';
+import publicPlanRoutes from './modules/subscription-plans/presentation/public-plan.routes';
 import subscriptionRoutes from './modules/subscriptions/presentation/subscription.routes';
 import groupRoutes from './modules/groups/presentation/group.routes';
 
@@ -51,6 +52,7 @@ app.use('/api/v1/investment-profiles', investmentProfileRoutes);
 app.use('/api/v1/admin/users', adminUserRoutes);
 app.use('/api/v1/admin/app-config', appConfigRoutes);
 app.use('/api/v1/admin/subscription-plans', subscriptionPlanRoutes);
+app.use('/api/v1/plans', publicPlanRoutes);
 app.use('/api/v1/subscriptions', subscriptionRoutes);
 app.use('/api/v1/groups', groupRoutes);
 

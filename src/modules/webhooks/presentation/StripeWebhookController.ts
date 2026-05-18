@@ -4,7 +4,8 @@ import { stripe } from '../../../config/stripe';
 import { prisma } from '../../../config/prisma';
 
 // Minimal inline shapes — Stripe v22 no expone los tipos vía namespace Stripe.XXX
-type SessionObj = { metadata?: Record<string, string> | null; subscription?: string | { id: string } | null };
+type SessionObj = { metadata?: Record<string, string> | null; subscription?: string | { id: string } | null; customer?: string | { id: string } | null };
+type StripePeriod = { current_period_start: number; current_period_end: number };
 type InvoiceObj = { subscription?: string | { id: string } | null; period_start: number; period_end: number };
 type SubscriptionObj = { id: string };
 
@@ -44,13 +45,43 @@ export class StripeWebhookController {
 
   private async handleCheckoutCompleted(session: SessionObj): Promise<void> {
     const userId = session.metadata?.userId;
-    if (!userId || !session.subscription) return;
+    const planId = session.metadata?.planId;
+    if (!userId || !session.subscription || !planId) return;
 
     const stripeSubId = typeof session.subscription === 'string'
       ? session.subscription
       : session.subscription.id;
 
-    await prisma.subscription.update({ where: { userId }, data: { stripeSubscriptionId: stripeSubId } });
+    const stripeCustomerId = typeof session.customer === 'string'
+      ? session.customer
+      : session.customer?.id ?? null;
+
+    const stripeSub = await stripe.subscriptions.retrieve(stripeSubId) as unknown as StripePeriod;
+    const periodStart = new Date(stripeSub.current_period_start * 1000);
+    const periodEnd = new Date(stripeSub.current_period_end * 1000);
+
+    await prisma.subscription.upsert({
+      where: { userId },
+      update: {
+        planId,
+        stripeSubscriptionId: stripeSubId,
+        ...(stripeCustomerId ? { stripeCustomerId } : {}),
+        status: 'active',
+        currentPeriodStart: periodStart,
+        currentPeriodEnd: periodEnd,
+        cancelledAt: null,
+      },
+      create: {
+        userId,
+        planId,
+        status: 'active',
+        trialEndsAt: periodStart,
+        currentPeriodStart: periodStart,
+        currentPeriodEnd: periodEnd,
+        stripeSubscriptionId: stripeSubId,
+        ...(stripeCustomerId ? { stripeCustomerId } : {}),
+      },
+    });
   }
 
   private async handlePaymentSucceeded(invoice: InvoiceObj): Promise<void> {
