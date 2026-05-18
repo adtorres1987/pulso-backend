@@ -31,6 +31,39 @@ const userSelect = {
       name: true,
     },
   },
+  subscription: {
+    select: {
+      id: true,
+      status: true,
+      trialEndsAt: true,
+      currentPeriodStart: true,
+      currentPeriodEnd: true,
+      discountPercent: true,
+      cancelledAt: true,
+      createdAt: true,
+      plan: {
+        select: {
+          id: true,
+          name: true,
+          priceAmount: true,
+          currency: true,
+          intervalDays: true,
+        },
+      },
+    },
+  },
+  groupMemberships: {
+    select: {
+      id: true,
+      role: true,
+      group: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  },
 };
 
 export class PrismaAdminUserRepository implements IAdminUserRepository {

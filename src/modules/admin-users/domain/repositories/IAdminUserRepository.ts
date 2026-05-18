@@ -15,6 +15,28 @@ export interface AdminUserResult {
     avatarUrl: string | null;
   } | null;
   role: { id: string; name: string } | null;
+  subscription: {
+    id: string;
+    status: string;
+    trialEndsAt: Date;
+    currentPeriodStart: Date;
+    currentPeriodEnd: Date;
+    discountPercent: unknown; // Prisma Decimal — serialized as string by toJSON()
+    cancelledAt: Date | null;
+    createdAt: Date;
+    plan: {
+      id: string;
+      name: string;
+      priceAmount: unknown; // Prisma Decimal
+      currency: string;
+      intervalDays: number;
+    };
+  } | null;
+  groupMemberships: Array<{
+    id: string;
+    role: string;
+    group: { id: string; name: string };
+  }>;
 }
 
 export interface AdminUserListResult {
