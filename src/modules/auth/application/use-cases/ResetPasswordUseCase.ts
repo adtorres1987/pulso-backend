@@ -13,7 +13,7 @@ export class ResetPasswordUseCase {
       throw new AppError('Invalid or expired reset token', 400);
     }
 
-    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    const passwordHash = await bcrypt.hash(dto.password, 10);
     await this.userRepository.updatePassword(record.userId, passwordHash);
     await this.userRepository.deletePasswordResetToken(dto.token);
   }

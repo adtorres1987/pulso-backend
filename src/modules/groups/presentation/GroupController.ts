@@ -7,6 +7,7 @@ import { UpdateGroupUseCase } from '../application/use-cases/UpdateGroupUseCase'
 import { DeleteGroupUseCase } from '../application/use-cases/DeleteGroupUseCase';
 import { AddGroupMemberUseCase } from '../application/use-cases/AddGroupMemberUseCase';
 import { RemoveGroupMemberUseCase } from '../application/use-cases/RemoveGroupMemberUseCase';
+import { GetGroupExpensesUseCase } from '../application/use-cases/GetGroupExpensesUseCase';
 import { CreateGroupExpenseUseCase } from '../application/use-cases/CreateGroupExpenseUseCase';
 import { IncludeShareInPersonalUseCase } from '../application/use-cases/IncludeShareInPersonalUseCase';
 import { sendSuccess } from '../../../utils/response';
@@ -20,6 +21,7 @@ export class GroupController {
     private readonly remove: DeleteGroupUseCase,
     private readonly addMember: AddGroupMemberUseCase,
     private readonly removeMember: RemoveGroupMemberUseCase,
+    private readonly getExpenses: GetGroupExpensesUseCase,
     private readonly createExpense: CreateGroupExpenseUseCase,
     private readonly includeShare: IncludeShareInPersonalUseCase,
   ) {}
@@ -56,6 +58,10 @@ export class GroupController {
       await this.removeMember.execute(req.params.id, req.userId!, req.params.userId);
       sendSuccess(res, null, 204);
     } catch (err) { next(err); }
+  };
+
+  indexExpenses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try { sendSuccess(res, await this.getExpenses.execute(req.params.id, req.userId!)); } catch (err) { next(err); }
   };
 
   storeExpense = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {

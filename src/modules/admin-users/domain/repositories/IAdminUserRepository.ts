@@ -14,6 +14,7 @@ export interface AdminUserResult {
     country: string | null;
     avatarUrl: string | null;
   } | null;
+  role: { id: string; name: string } | null;
 }
 
 export interface AdminUserListResult {

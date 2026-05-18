@@ -301,6 +301,7 @@ model Subscription {
   currentPeriodEnd     DateTime
   discountPercent      Decimal            @default(0)
   cancelledAt          DateTime?
+  stripeCustomerId     String?
   stripeSubscriptionId String?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt

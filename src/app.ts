@@ -5,6 +5,7 @@ import { errorHandler } from './middlewares/errorHandler';
 import { notFound } from './middlewares/notFound';
 
 // Routes
+import stripeWebhookRoutes from './modules/webhooks/presentation/stripe-webhook.routes';
 import authRoutes from './modules/auth/presentation/auth.routes';
 import roleRoutes from './modules/roles/presentation/role.routes';
 import permissionRoutes from './modules/permissions/presentation/permission.routes';
@@ -22,6 +23,9 @@ import subscriptionRoutes from './modules/subscriptions/presentation/subscriptio
 import groupRoutes from './modules/groups/presentation/group.routes';
 
 const app = express();
+
+// Stripe webhook — must be registered before express.json() to receive raw body for signature verification
+app.use('/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookRoutes);
 
 // Middlewares
 app.use(cors({ origin: env.CORS_ORIGIN }));

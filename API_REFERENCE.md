@@ -329,6 +329,62 @@ Cancels the authenticated user's subscription. Sets `status` to `"cancelled"` an
 
 ---
 
+### `POST /subscriptions/checkout`
+Creates a Stripe Checkout Session for the user to pay for a plan. If the user has no Stripe customer yet, one is created automatically.
+
+**Request body**
+```ts
+{
+  planId: string  // UUID — must have a stripePriceId configured
+}
+```
+
+**Response 200**
+```ts
+{
+  data: {
+    checkoutUrl: string  // Stripe-hosted payment page — redirect the user here
+  }
+  message: "Checkout session created"
+}
+```
+
+**Errors**
+- `400` — plan has no `stripePriceId` configured
+- `404` — plan not found
+
+> After the user completes payment, Stripe calls `POST /webhooks/stripe`. The subscription is activated automatically via the webhook — the client does not need to call any endpoint after the redirect.
+
+---
+
+## Stripe Webhooks
+
+### `POST /webhooks/stripe`
+No auth required. Stripe calls this endpoint directly. The request body must be the **raw bytes** (not JSON-parsed) — this is handled automatically by the server.
+
+**Headers** (sent by Stripe)
+```
+Stripe-Signature: t=...,v1=...
+```
+
+**Handled events**
+
+| Event | Effect |
+|-------|--------|
+| `checkout.session.completed` | Links `stripeSubscriptionId` to the user's subscription |
+| `invoice.payment_succeeded` | Sets `status: "active"`, updates `currentPeriodStart/End` |
+| `invoice.payment_failed` | Sets `status: "expired"` |
+| `customer.subscription.deleted` | Sets `status: "cancelled"`, records `cancelledAt` |
+
+**Response 200**
+```json
+{ "received": true }
+```
+
+> To test webhooks locally, use the [Stripe CLI](https://stripe.com/docs/stripe-cli): `stripe listen --forward-to localhost:3000/webhooks/stripe`
+
+---
+
 ## Categories
 
 Categories can be **global** (created by admin, `userId: null`) or **personal** (created by subscribed users, `userId` is set). Soft-deleted categories are excluded from all responses.

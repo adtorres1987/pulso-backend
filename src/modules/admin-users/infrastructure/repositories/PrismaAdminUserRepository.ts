@@ -25,6 +25,12 @@ const userSelect = {
       avatarUrl: true,
     },
   },
+  role: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
 };
 
 export class PrismaAdminUserRepository implements IAdminUserRepository {

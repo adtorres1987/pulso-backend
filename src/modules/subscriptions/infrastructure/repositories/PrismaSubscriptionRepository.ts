@@ -3,6 +3,7 @@ import { prisma } from '../../../../config/prisma';
 import {
   CreateSubscriptionData,
   ISubscriptionRepository,
+  StripeData,
   SubscriptionResult,
 } from '../../domain/repositories/ISubscriptionRepository';
 
@@ -100,5 +101,38 @@ export class PrismaSubscriptionRepository implements ISubscriptionRepository {
       where: { userId: { in: members.map((m) => m.userId) }, status: { in: ['trial', 'active'] } },
       data: { discountPercent: shouldApply ? discountPercent : 0 },
     });
+  }
+
+  async findStripeData(userId: string): Promise<StripeData | null> {
+    const row = await prisma.subscription.findUnique({
+      where: { userId },
+      select: { stripeCustomerId: true, stripeSubscriptionId: true },
+    });
+    return row ?? null;
+  }
+
+  async findUserIdByStripeSubscriptionId(stripeSubscriptionId: string): Promise<string | null> {
+    const row = await prisma.subscription.findFirst({
+      where: { stripeSubscriptionId },
+      select: { userId: true },
+    });
+    return row?.userId ?? null;
+  }
+
+  async setStripeCustomerId(userId: string, stripeCustomerId: string): Promise<void> {
+    await prisma.subscription.update({ where: { userId }, data: { stripeCustomerId } });
+  }
+
+  async linkStripeSubscription(userId: string, stripeSubscriptionId: string): Promise<void> {
+    await prisma.subscription.update({ where: { userId }, data: { stripeSubscriptionId } });
+  }
+
+  async renewPeriod(userId: string, currentPeriodStart: Date, currentPeriodEnd: Date): Promise<SubscriptionResult> {
+    const row = await prisma.subscription.update({
+      where: { userId },
+      data: { status: 'active', currentPeriodStart, currentPeriodEnd, cancelledAt: null },
+      include: subscriptionInclude,
+    });
+    return toResult(row);
   }
 }
