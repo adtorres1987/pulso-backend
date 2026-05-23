@@ -12,9 +12,23 @@ export interface AppConfigResult {
   updatedAt: Date;
 }
 
+export interface CreateAppConfigData {
+  key: string;
+  value: string;
+  description?: string;
+}
+
+export interface UpdateAppConfigData {
+  value?: string;
+  description?: string;
+}
+
 export interface IAppConfigRepository {
   findAll(): Promise<AppConfigResult[]>;
   findByKey(key: string): Promise<AppConfigResult | null>;
+  create(data: CreateAppConfigData): Promise<AppConfigResult>;
   upsert(key: string, value: string): Promise<AppConfigResult>;
+  update(key: string, data: UpdateAppConfigData): Promise<AppConfigResult>;
+  delete(key: string): Promise<void>;
   getValueAsNumber(key: string, fallback: number): Promise<number>;
 }
