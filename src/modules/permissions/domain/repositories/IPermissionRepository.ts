@@ -15,8 +15,13 @@ export interface UpdatePermissionData {
   description?: string;
 }
 
+export interface PaginatedPermissions {
+  items: PermissionResult[];
+  total: number;
+}
+
 export interface IPermissionRepository {
-  findAll(): Promise<PermissionResult[]>;
+  findAll(page: number, limit: number): Promise<PaginatedPermissions>;
   findById(id: string): Promise<PermissionResult | null>;
   actionExists(action: string): Promise<boolean>;
   create(data: CreatePermissionData): Promise<PermissionResult>;

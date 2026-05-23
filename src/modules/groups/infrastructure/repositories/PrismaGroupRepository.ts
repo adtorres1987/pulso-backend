@@ -8,6 +8,8 @@ import {
   GroupMemberResult,
   GroupResult,
   IGroupRepository,
+  PaginatedGroupExpenses,
+  PaginatedGroups,
 } from '../../domain/repositories/IGroupRepository';
 
 const memberSelect = { id: true, userId: true, role: true, joinedAt: true };
@@ -52,13 +54,13 @@ const mapGroup = (r: {
 }): GroupResult => ({ ...r, members: r.members.map(mapMember) });
 
 export class PrismaGroupRepository implements IGroupRepository {
-  async findAllByUser(userId: string): Promise<GroupResult[]> {
-    const rows = await prisma.group.findMany({
-      where: { deletedAt: null, members: { some: { userId } } },
-      include: groupInclude,
-      orderBy: { createdAt: 'desc' },
-    });
-    return rows.map(mapGroup);
+  async findAllByUser(userId: string, page = 1, limit = 20): Promise<PaginatedGroups> {
+    const where = { deletedAt: null, members: { some: { userId } } };
+    const [rows, total] = await prisma.$transaction([
+      prisma.group.findMany({ where, include: groupInclude, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      prisma.group.count({ where }),
+    ]);
+    return { items: rows.map(mapGroup), total };
   }
 
   async findByIdAndUser(id: string, userId: string): Promise<GroupResult | null> {
@@ -125,13 +127,13 @@ export class PrismaGroupRepository implements IGroupRepository {
     return mapExpense(row);
   }
 
-  async findExpensesByGroup(groupId: string): Promise<GroupExpenseResult[]> {
-    const rows = await prisma.groupExpense.findMany({
-      where: { groupId },
-      include: expenseInclude,
-      orderBy: { occurredAt: 'desc' },
-    });
-    return rows.map(mapExpense);
+  async findExpensesByGroup(groupId: string, page = 1, limit = 20): Promise<PaginatedGroupExpenses> {
+    const where = { groupId };
+    const [rows, total] = await prisma.$transaction([
+      prisma.groupExpense.findMany({ where, include: expenseInclude, orderBy: { occurredAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      prisma.groupExpense.count({ where }),
+    ]);
+    return { items: rows.map(mapExpense), total };
   }
 
   async includeShareInPersonal(shareId: string, transactionId: string): Promise<GroupExpenseShareResult> {

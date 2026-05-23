@@ -1,9 +1,9 @@
-import { IRoleRepository, RoleResult } from '../../domain/repositories/IRoleRepository';
+import { IRoleRepository, PaginatedRoles } from '../../domain/repositories/IRoleRepository';
 
 export class GetAllRolesUseCase {
   constructor(private readonly roleRepository: IRoleRepository) {}
 
-  async execute(): Promise<RoleResult[]> {
-    return this.roleRepository.findAll();
+  async execute(page: number, limit: number): Promise<PaginatedRoles> {
+    return this.roleRepository.findAll(page, limit);
   }
 }

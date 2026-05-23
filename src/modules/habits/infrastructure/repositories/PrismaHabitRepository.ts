@@ -5,6 +5,8 @@ import {
   HabitLogResult,
   HabitResult,
   IHabitRepository,
+  PaginatedHabitLogs,
+  PaginatedHabits,
   UpdateHabitData,
 } from '../../domain/repositories/IHabitRepository';
 
@@ -12,12 +14,13 @@ const habitSelect = { id: true, name: true, frequency: true, active: true, creat
 const logSelect = { id: true, date: true, completed: true, createdAt: true };
 
 export class PrismaHabitRepository implements IHabitRepository {
-  async findAllByUser(userId: string, activeOnly?: boolean): Promise<HabitResult[]> {
-    return prisma.habit.findMany({
-      where: { userId, ...(activeOnly !== undefined && { active: activeOnly }) },
-      select: habitSelect,
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAllByUser(userId: string, activeOnly: boolean | undefined, page = 1, limit = 20): Promise<PaginatedHabits> {
+    const where = { userId, ...(activeOnly !== undefined && { active: activeOnly }) };
+    const [items, total] = await prisma.$transaction([
+      prisma.habit.findMany({ where, select: habitSelect, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      prisma.habit.count({ where }),
+    ]);
+    return { items, total };
   }
 
   async findByIdAndUser(id: string, userId: string): Promise<HabitResult | null> {
@@ -47,12 +50,13 @@ export class PrismaHabitRepository implements IHabitRepository {
     await prisma.habit.delete({ where: { id } });
   }
 
-  async findLogsByHabit(habitId: string): Promise<HabitLogResult[]> {
-    return prisma.habitLog.findMany({
-      where: { habitId },
-      select: logSelect,
-      orderBy: { date: 'desc' },
-    });
+  async findLogsByHabit(habitId: string, page = 1, limit = 20): Promise<PaginatedHabitLogs> {
+    const where = { habitId };
+    const [items, total] = await prisma.$transaction([
+      prisma.habitLog.findMany({ where, select: logSelect, orderBy: { date: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      prisma.habitLog.count({ where }),
+    ]);
+    return { items, total };
   }
 
   async upsertLog(habitId: string, date: Date, completed: boolean): Promise<HabitLogResult> {

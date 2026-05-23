@@ -23,8 +23,10 @@ export class HabitController {
   getAll = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const activeOnly = req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined;
-      const habits = await this.getAllHabits.execute(req.userId!, activeOnly);
-      sendSuccess(res, habits);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const result = await this.getAllHabits.execute(req.userId!, activeOnly, page, limit);
+      sendSuccess(res, { ...result, page, limit });
     } catch (err) {
       next(err);
     }
@@ -68,8 +70,10 @@ export class HabitController {
 
   getLogs = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const logs = await this.getHabitLogs.execute(req.params.id, req.userId!);
-      sendSuccess(res, logs);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const result = await this.getHabitLogs.execute(req.params.id, req.userId!, page, limit);
+      sendSuccess(res, { ...result, page, limit });
     } catch (err) {
       next(err);
     }

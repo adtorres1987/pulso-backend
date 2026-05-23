@@ -4,6 +4,7 @@ import { prisma } from '../../../../config/prisma';
 import {
   CreateTransactionData,
   ITransactionRepository,
+  PaginatedTransactions,
   TransactionFilters,
   TransactionResult,
   UpdateTransactionData,
@@ -37,26 +38,26 @@ const toResult = (raw: {
 });
 
 export class PrismaTransactionRepository implements ITransactionRepository {
-  async findAllByUser(userId: string, filters: TransactionFilters): Promise<TransactionResult[]> {
-    const rows = await prisma.transaction.findMany({
-      where: {
-        userId,
-        ...(filters.type && { type: filters.type as TransactionType }),
-        ...(filters.categoryId && { categoryId: filters.categoryId }),
-        ...(filters.emotionTag && { emotionTag: filters.emotionTag as EmotionTag }),
-        ...(filters.startDate || filters.endDate
-          ? {
-              occurredAt: {
-                ...(filters.startDate && { gte: filters.startDate }),
-                ...(filters.endDate && { lte: filters.endDate }),
-              },
-            }
-          : {}),
-      },
-      select: transactionSelect,
-      orderBy: { occurredAt: 'desc' },
-    });
-    return rows.map(toResult);
+  async findAllByUser(userId: string, filters: TransactionFilters, page = 1, limit = 20): Promise<PaginatedTransactions> {
+    const where = {
+      userId,
+      ...(filters.type && { type: filters.type as TransactionType }),
+      ...(filters.categoryId && { categoryId: filters.categoryId }),
+      ...(filters.emotionTag && { emotionTag: filters.emotionTag as EmotionTag }),
+      ...(filters.startDate || filters.endDate
+        ? {
+            occurredAt: {
+              ...(filters.startDate && { gte: filters.startDate }),
+              ...(filters.endDate && { lte: filters.endDate }),
+            },
+          }
+        : {}),
+    };
+    const [rows, total] = await prisma.$transaction([
+      prisma.transaction.findMany({ where, select: transactionSelect, orderBy: { occurredAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      prisma.transaction.count({ where }),
+    ]);
+    return { items: rows.map(toResult), total };
   }
 
   async findByIdAndUser(id: string, userId: string): Promise<TransactionResult | null> {

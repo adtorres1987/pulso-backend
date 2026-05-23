@@ -27,7 +27,12 @@ export class GroupController {
   ) {}
 
   index = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    try { sendSuccess(res, await this.getAll.execute(req.userId!)); } catch (err) { next(err); }
+    try {
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const result = await this.getAll.execute(req.userId!, page, limit);
+      sendSuccess(res, { ...result, page, limit });
+    } catch (err) { next(err); }
   };
 
   show = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -61,7 +66,12 @@ export class GroupController {
   };
 
   indexExpenses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    try { sendSuccess(res, await this.getExpenses.execute(req.params.id, req.userId!)); } catch (err) { next(err); }
+    try {
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const result = await this.getExpenses.execute(req.params.id, req.userId!, page, limit);
+      sendSuccess(res, { ...result, page, limit });
+    } catch (err) { next(err); }
   };
 
   storeExpense = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {

@@ -20,8 +20,10 @@ export class SavingGoalController {
 
   getAll = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const goals = await this.getAllSavingGoals.execute(req.userId!);
-      sendSuccess(res, goals);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const result = await this.getAllSavingGoals.execute(req.userId!, page, limit);
+      sendSuccess(res, { ...result, page, limit });
     } catch (err) {
       next(err);
     }

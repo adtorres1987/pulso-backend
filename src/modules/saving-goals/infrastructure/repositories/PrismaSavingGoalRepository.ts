@@ -3,6 +3,7 @@ import { prisma } from '../../../../config/prisma';
 import {
   CreateSavingGoalData,
   ISavingGoalRepository,
+  PaginatedSavingGoals,
   SavingGoalResult,
   UpdateSavingGoalData,
 } from '../../domain/repositories/ISavingGoalRepository';
@@ -30,13 +31,13 @@ const toResult = (raw: {
 });
 
 export class PrismaSavingGoalRepository implements ISavingGoalRepository {
-  async findAllByUser(userId: string): Promise<SavingGoalResult[]> {
-    const rows = await prisma.savingGoal.findMany({
-      where: { userId },
-      select: goalSelect,
-      orderBy: { createdAt: 'desc' },
-    });
-    return rows.map(toResult);
+  async findAllByUser(userId: string, page = 1, limit = 20): Promise<PaginatedSavingGoals> {
+    const where = { userId };
+    const [rows, total] = await prisma.$transaction([
+      prisma.savingGoal.findMany({ where, select: goalSelect, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      prisma.savingGoal.count({ where }),
+    ]);
+    return { items: rows.map(toResult), total };
   }
 
   async findByIdAndUser(id: string, userId: string): Promise<SavingGoalResult | null> {

@@ -16,8 +16,10 @@ export class SnapshotController {
 
   getAll = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const snapshots = await this.getAllSnapshots.execute(req.userId!);
-      sendSuccess(res, snapshots);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const result = await this.getAllSnapshots.execute(req.userId!, page, limit);
+      sendSuccess(res, { ...result, page, limit });
     } catch (err) {
       next(err);
     }

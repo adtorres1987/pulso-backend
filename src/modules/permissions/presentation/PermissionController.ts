@@ -15,10 +15,12 @@ export class PermissionController {
     private readonly deletePermission: DeletePermissionUseCase,
   ) {}
 
-  getAll = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const permissions = await this.getAllPermissions.execute();
-      sendSuccess(res, permissions);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const result = await this.getAllPermissions.execute(page, limit);
+      sendSuccess(res, { ...result, page, limit });
     } catch (err) {
       next(err);
     }

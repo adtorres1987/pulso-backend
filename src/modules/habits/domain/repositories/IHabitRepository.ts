@@ -25,12 +25,22 @@ export interface UpdateHabitData {
   active?: boolean;
 }
 
+export interface PaginatedHabits {
+  items: HabitResult[];
+  total: number;
+}
+
+export interface PaginatedHabitLogs {
+  items: HabitLogResult[];
+  total: number;
+}
+
 export interface IHabitRepository {
-  findAllByUser(userId: string, activeOnly?: boolean): Promise<HabitResult[]>;
+  findAllByUser(userId: string, activeOnly: boolean | undefined, page: number, limit: number): Promise<PaginatedHabits>;
   findByIdAndUser(id: string, userId: string): Promise<HabitResult | null>;
   create(data: CreateHabitData): Promise<HabitResult>;
   update(id: string, data: UpdateHabitData): Promise<HabitResult>;
   delete(id: string): Promise<void>;
-  findLogsByHabit(habitId: string): Promise<HabitLogResult[]>;
+  findLogsByHabit(habitId: string, page: number, limit: number): Promise<PaginatedHabitLogs>;
   upsertLog(habitId: string, date: Date, completed: boolean): Promise<HabitLogResult>;
 }

@@ -2,6 +2,7 @@ import { prisma } from '../../../../config/prisma';
 import {
   CreatePermissionData,
   IPermissionRepository,
+  PaginatedPermissions,
   PermissionResult,
   UpdatePermissionData,
 } from '../../domain/repositories/IPermissionRepository';
@@ -14,11 +15,12 @@ const permissionSelect = {
 };
 
 export class PrismaPermissionRepository implements IPermissionRepository {
-  async findAll(): Promise<PermissionResult[]> {
-    return prisma.permission.findMany({
-      select: permissionSelect,
-      orderBy: { action: 'asc' },
-    });
+  async findAll(page = 1, limit = 20): Promise<PaginatedPermissions> {
+    const [items, total] = await prisma.$transaction([
+      prisma.permission.findMany({ select: permissionSelect, orderBy: { action: 'asc' }, skip: (page - 1) * limit, take: limit }),
+      prisma.permission.count(),
+    ]);
+    return { items, total };
   }
 
   async findById(id: string): Promise<PermissionResult | null> {

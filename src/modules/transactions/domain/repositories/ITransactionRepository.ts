@@ -38,8 +38,13 @@ export interface UpdateTransactionData {
   categoryId?: string;
 }
 
+export interface PaginatedTransactions {
+  items: TransactionResult[];
+  total: number;
+}
+
 export interface ITransactionRepository {
-  findAllByUser(userId: string, filters: TransactionFilters): Promise<TransactionResult[]>;
+  findAllByUser(userId: string, filters: TransactionFilters, page: number, limit: number): Promise<PaginatedTransactions>;
   findByIdAndUser(id: string, userId: string): Promise<TransactionResult | null>;
   create(data: CreateTransactionData): Promise<TransactionResult>;
   update(id: string, data: UpdateTransactionData): Promise<TransactionResult>;

@@ -15,10 +15,12 @@ export class RoleController {
     private readonly deleteRole: DeleteRoleUseCase,
   ) {}
 
-  getAll = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const roles = await this.getAllRoles.execute();
-      sendSuccess(res, roles);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const result = await this.getAllRoles.execute(page, limit);
+      sendSuccess(res, { ...result, page, limit });
     } catch (err) {
       next(err);
     }

@@ -3,6 +3,7 @@ import { prisma } from '../../../../config/prisma';
 import {
   CreateRoleData,
   IRoleRepository,
+  PaginatedRoles,
   RoleResult,
   UpdateRoleData,
 } from '../../domain/repositories/IRoleRepository';
@@ -32,13 +33,13 @@ const toRoleResult = (raw: {
 });
 
 export class PrismaRoleRepository implements IRoleRepository {
-  async findAll(): Promise<RoleResult[]> {
-    const roles = await prisma.role.findMany({
-      where: { deletedAt: null },
-      select: roleSelect,
-      orderBy: { createdAt: 'asc' },
-    });
-    return roles.map(toRoleResult);
+  async findAll(page = 1, limit = 20): Promise<PaginatedRoles> {
+    const where = { deletedAt: null };
+    const [roles, total] = await prisma.$transaction([
+      prisma.role.findMany({ where, select: roleSelect, orderBy: { createdAt: 'asc' }, skip: (page - 1) * limit, take: limit }),
+      prisma.role.count({ where }),
+    ]);
+    return { items: roles.map(toRoleResult), total };
   }
 
   async findById(id: string): Promise<RoleResult | null> {

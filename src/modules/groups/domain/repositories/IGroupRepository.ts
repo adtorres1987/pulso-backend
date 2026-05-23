@@ -48,8 +48,18 @@ export interface CreateGroupExpenseData {
   shares: Array<{ groupMemberId: string; amount: number }>;
 }
 
+export interface PaginatedGroups {
+  items: GroupResult[];
+  total: number;
+}
+
+export interface PaginatedGroupExpenses {
+  items: GroupExpenseResult[];
+  total: number;
+}
+
 export interface IGroupRepository {
-  findAllByUser(userId: string): Promise<GroupResult[]>;
+  findAllByUser(userId: string, page: number, limit: number): Promise<PaginatedGroups>;
   findByIdAndUser(id: string, userId: string): Promise<GroupResult | null>;
   create(data: CreateGroupData): Promise<GroupResult>;
   update(id: string, name: string): Promise<GroupResult>;
@@ -58,6 +68,6 @@ export interface IGroupRepository {
   removeMember(groupId: string, userId: string): Promise<void>;
   findMember(groupId: string, userId: string): Promise<GroupMemberResult | null>;
   createExpense(data: CreateGroupExpenseData): Promise<GroupExpenseResult>;
-  findExpensesByGroup(groupId: string): Promise<GroupExpenseResult[]>;
+  findExpensesByGroup(groupId: string, page: number, limit: number): Promise<PaginatedGroupExpenses>;
   includeShareInPersonal(shareId: string, transactionId: string): Promise<GroupExpenseShareResult>;
 }

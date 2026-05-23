@@ -17,8 +17,13 @@ export interface UpdateRoleData {
   description?: string;
 }
 
+export interface PaginatedRoles {
+  items: RoleResult[];
+  total: number;
+}
+
 export interface IRoleRepository {
-  findAll(): Promise<RoleResult[]>;
+  findAll(page: number, limit: number): Promise<PaginatedRoles>;
   findById(id: string): Promise<RoleResult | null>;
   nameExists(name: RoleType): Promise<boolean>;
   create(data: CreateRoleData): Promise<RoleResult>;

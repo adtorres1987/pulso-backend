@@ -5,6 +5,7 @@ import {
   CreateInvestmentProfileData,
   IInvestmentProfileRepository,
   InvestmentProfileResult,
+  PaginatedInvestmentProfiles,
   UpdateInvestmentProfileData,
 } from '../../domain/repositories/IInvestmentProfileRepository';
 
@@ -29,13 +30,13 @@ const toResult = (raw: {
 });
 
 export class PrismaInvestmentProfileRepository implements IInvestmentProfileRepository {
-  async findAllByUser(userId: string): Promise<InvestmentProfileResult[]> {
-    const rows = await prisma.investmentProfile.findMany({
-      where: { userId },
-      select: profileSelect,
-      orderBy: { createdAt: 'desc' },
-    });
-    return rows.map(toResult);
+  async findAllByUser(userId: string, page = 1, limit = 20): Promise<PaginatedInvestmentProfiles> {
+    const where = { userId };
+    const [rows, total] = await prisma.$transaction([
+      prisma.investmentProfile.findMany({ where, select: profileSelect, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      prisma.investmentProfile.count({ where }),
+    ]);
+    return { items: rows.map(toResult), total };
   }
 
   async findByIdAndUser(id: string, userId: string): Promise<InvestmentProfileResult | null> {

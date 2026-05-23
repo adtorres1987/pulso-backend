@@ -21,8 +21,13 @@ export interface UpdateSnapshotData {
   consciousScore?: number;
 }
 
+export interface PaginatedSnapshots {
+  items: SnapshotResult[];
+  total: number;
+}
+
 export interface ISnapshotRepository {
-  findAllByUser(userId: string): Promise<SnapshotResult[]>;
+  findAllByUser(userId: string, page: number, limit: number): Promise<PaginatedSnapshots>;
   findByUserAndDate(userId: string, date: Date): Promise<SnapshotResult | null>;
   findByIdAndUser(id: string, userId: string): Promise<SnapshotResult | null>;
   create(data: CreateSnapshotData): Promise<SnapshotResult>;

@@ -20,8 +20,10 @@ export class TransactionController {
   getAll = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const filters: TransactionFilters = req.query as TransactionFilters;
-      const transactions = await this.getAllTransactions.execute(req.userId!, filters);
-      sendSuccess(res, transactions);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const result = await this.getAllTransactions.execute(req.userId!, filters, page, limit);
+      sendSuccess(res, { ...result, page, limit });
     } catch (err) {
       next(err);
     }

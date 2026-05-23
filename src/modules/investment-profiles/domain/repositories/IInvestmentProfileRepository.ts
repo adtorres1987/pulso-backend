@@ -19,8 +19,13 @@ export interface UpdateInvestmentProfileData {
   expectedReturn?: number;
 }
 
+export interface PaginatedInvestmentProfiles {
+  items: InvestmentProfileResult[];
+  total: number;
+}
+
 export interface IInvestmentProfileRepository {
-  findAllByUser(userId: string): Promise<InvestmentProfileResult[]>;
+  findAllByUser(userId: string, page: number, limit: number): Promise<PaginatedInvestmentProfiles>;
   findByIdAndUser(id: string, userId: string): Promise<InvestmentProfileResult | null>;
   create(data: CreateInvestmentProfileData): Promise<InvestmentProfileResult>;
   update(id: string, data: UpdateInvestmentProfileData): Promise<InvestmentProfileResult>;

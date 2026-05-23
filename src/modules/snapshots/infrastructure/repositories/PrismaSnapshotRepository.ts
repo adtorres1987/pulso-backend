@@ -3,6 +3,7 @@ import { prisma } from '../../../../config/prisma';
 import {
   CreateSnapshotData,
   ISnapshotRepository,
+  PaginatedSnapshots,
   SnapshotResult,
   UpdateSnapshotData,
 } from '../../domain/repositories/ISnapshotRepository';
@@ -17,12 +18,13 @@ const snapshotSelect = {
 };
 
 export class PrismaSnapshotRepository implements ISnapshotRepository {
-  async findAllByUser(userId: string): Promise<SnapshotResult[]> {
-    return prisma.dailySnapshot.findMany({
-      where: { userId },
-      select: snapshotSelect,
-      orderBy: { date: 'desc' },
-    });
+  async findAllByUser(userId: string, page = 1, limit = 20): Promise<PaginatedSnapshots> {
+    const where = { userId };
+    const [items, total] = await prisma.$transaction([
+      prisma.dailySnapshot.findMany({ where, select: snapshotSelect, orderBy: { date: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      prisma.dailySnapshot.count({ where }),
+    ]);
+    return { items, total };
   }
 
   async findByUserAndDate(userId: string, date: Date): Promise<SnapshotResult | null> {
