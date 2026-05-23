@@ -12,7 +12,13 @@ import {
   PaginatedGroups,
 } from '../../domain/repositories/IGroupRepository';
 
-const memberSelect = { id: true, userId: true, role: true, joinedAt: true };
+const memberSelect = {
+  id: true,
+  userId: true,
+  role: true,
+  joinedAt: true,
+  user: { select: { person: { select: { firstName: true, lastName: true, avatarUrl: true } } } },
+};
 
 const groupInclude = {
   members: { select: memberSelect },
@@ -28,9 +34,15 @@ const shareSelect = {
 
 const expenseInclude = { shares: { select: shareSelect } };
 
-const mapMember = (r: { id: string; userId: string; role: string; joinedAt: Date }): GroupMemberResult => ({
-  ...r,
+const mapMember = (r: {
+  id: string; userId: string; role: string; joinedAt: Date;
+  user: { person: { firstName: string; lastName: string; avatarUrl: string | null } | null } | null;
+}): GroupMemberResult => ({
+  id: r.id,
+  userId: r.userId,
   role: r.role as GroupMemberResult['role'],
+  joinedAt: r.joinedAt,
+  person: r.user?.person ?? null,
 });
 
 const mapShare = (r: { id: string; groupMemberId: string; amount: Decimal; includeInPersonal: boolean; transactionId: string | null }): GroupExpenseShareResult => ({
@@ -50,7 +62,7 @@ const mapExpense = (r: {
 
 const mapGroup = (r: {
   id: string; name: string; createdBy: string; createdAt: Date;
-  members: Array<{ id: string; userId: string; role: string; joinedAt: Date }>;
+  members: Array<{ id: string; userId: string; role: string; joinedAt: Date; user: { person: { firstName: string; lastName: string; avatarUrl: string | null } | null } | null }>;
 }): GroupResult => ({ ...r, members: r.members.map(mapMember) });
 
 export class PrismaGroupRepository implements IGroupRepository {

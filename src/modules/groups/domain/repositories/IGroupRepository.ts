@@ -13,6 +13,7 @@ export interface GroupMemberResult {
   userId: string;
   role: GroupMemberRole;
   joinedAt: Date;
+  person: { firstName: string; lastName: string; avatarUrl: string | null } | null;
 }
 
 export interface GroupExpenseResult {
