@@ -4,6 +4,7 @@ import {
   CategoryResult,
   CreateCategoryData,
   ICategoryRepository,
+  PaginatedCategories,
   UpdateCategoryData,
 } from '../../domain/repositories/ICategoryRepository';
 
@@ -18,15 +19,22 @@ const categorySelect = {
 
 export class PrismaCategoryRepository implements ICategoryRepository {
   // Returns global categories + user's own categories (if userId provided)
-  async findAll(userId?: string): Promise<CategoryResult[]> {
-    return prisma.category.findMany({
-      where: {
-        deletedAt: null,
-        OR: [{ userId: null }, ...(userId ? [{ userId }] : [])],
-      },
-      select: categorySelect,
-      orderBy: { name: 'asc' },
-    });
+  async findAll(userId?: string, page = 1, limit = 10): Promise<PaginatedCategories> {
+    const where = {
+      deletedAt: null,
+      OR: [{ userId: null }, ...(userId ? [{ userId }] : [])] as object[],
+    };
+    const [items, total] = await prisma.$transaction([
+      prisma.category.findMany({
+        where,
+        select: categorySelect,
+        orderBy: { name: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.category.count({ where }),
+    ]);
+    return { items, total };
   }
 
   async findById(id: string): Promise<CategoryResult | null> {

@@ -19,8 +19,10 @@ export class CategoryController {
   // Returns globals + user's own categories
   getAll = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const categories = await this.getAllCategories.execute(req.userId!);
-      sendSuccess(res, categories);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 10));
+      const result = await this.getAllCategories.execute(req.userId!, page, limit);
+      sendSuccess(res, { ...result, page, limit });
     } catch (err) {
       next(err);
     }

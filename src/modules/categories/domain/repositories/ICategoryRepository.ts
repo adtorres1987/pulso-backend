@@ -21,8 +21,13 @@ export interface UpdateCategoryData {
   type?: 'expense' | 'income';
 }
 
+export interface PaginatedCategories {
+  items: CategoryResult[];
+  total: number;
+}
+
 export interface ICategoryRepository {
-  findAll(userId?: string): Promise<CategoryResult[]>;
+  findAll(userId?: string, page?: number, limit?: number): Promise<PaginatedCategories>;
   findById(id: string): Promise<CategoryResult | null>;
   findByIdForUser(id: string, userId: string): Promise<CategoryResult | null>;
   existsByName(name: string, userId?: string, excludeId?: string): Promise<boolean>;
