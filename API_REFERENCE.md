@@ -32,6 +32,32 @@ Every response follows this shape:
 
 ---
 
+## Pagination
+
+All list endpoints support pagination via query params:
+
+| Param | Type | Default | Max | Description |
+|-------|------|---------|-----|-------------|
+| `page` | integer | `1` | — | Page number (1-based) |
+| `limit` | integer | `20` | `100` | Items per page |
+
+**Paginated response shape:**
+
+```ts
+{
+  data: {
+    items: T[]     // items for the current page
+    total: number  // total count across all pages
+    page: number   // current page
+    limit: number  // items per page used
+  }
+}
+```
+
+> **Exception:** `GET /categories` uses a default `limit` of `10`.
+
+---
+
 ## Enums
 
 | Name | Values |
@@ -405,17 +431,28 @@ Categories can be **global** (created by admin, `userId: null`) or **personal** 
 
 ### `GET /categories`
 
+**Query params** — optional
+```
+page   integer   default: 1   page number
+limit  integer   default: 10  items per page (max 100)
+```
+
 **Response 200**
 ```ts
 {
-  data: Array<{
-    id: string
-    userId: string | null   // null = global; UUID = user-owned
-    name: string
-    icon: string | null
-    type: "expense" | "income"
-    isSystem: boolean
-  }>
+  data: {
+    items: Array<{
+      id: string
+      userId: string | null   // null = global; UUID = user-owned
+      name: string
+      icon: string | null
+      type: "expense" | "income"
+      isSystem: boolean
+    }>
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -536,26 +573,33 @@ categoryId  UUID
 emotionTag  "need" | "impulse" | "emotional"
 startDate   "YYYY-MM-DD"
 endDate     "YYYY-MM-DD"
+page        integer   default: 1
+limit       integer   default: 20  (max 100)
 ```
 
 **Response 200**
 ```ts
 {
-  data: Array<{
-    id: string
-    amount: string            // serialized Decimal
-    type: "expense" | "income"
-    emotionTag: string | null
-    note: string | null
-    occurredAt: string        // ISO datetime
-    createdAt: string
-    categoryId: string | null // UUID of the linked category
-    category: {
+  data: {
+    items: Array<{
       id: string
-      name: string
-      icon: string | null
-    } | null
-  }>
+      amount: string            // serialized Decimal
+      type: "expense" | "income"
+      emotionTag: string | null
+      note: string | null
+      occurredAt: string        // ISO datetime
+      createdAt: string
+      categoryId: string | null // UUID of the linked category
+      category: {
+        id: string
+        name: string
+        icon: string | null
+      } | null
+    }>
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -618,17 +662,28 @@ One snapshot per user per day. Unique constraint: `(userId, date)`.
 
 ### `GET /snapshots`
 
+**Query params** — optional
+```
+page   integer   default: 1
+limit  integer   default: 20  (max 100)
+```
+
 **Response 200**
 ```ts
 {
-  data: Array<{
-    id: string
-    date: string              // ISO datetime (UTC midnight)
-    mood: string | null
-    reflection: string | null
-    consciousScore: number | null  // 1–10
-    createdAt: string
-  }>
+  data: {
+    items: Array<{
+      id: string
+      date: string              // ISO datetime (UTC midnight)
+      mood: string | null
+      reflection: string | null
+      consciousScore: number | null  // 1–10
+      createdAt: string
+    }>
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -684,17 +739,28 @@ All scoped to the authenticated user.
 
 ### `GET /saving-goals`
 
+**Query params** — optional
+```
+page   integer   default: 1
+limit  integer   default: 20  (max 100)
+```
+
 **Response 200**
 ```ts
 {
-  data: Array<{
-    id: string
-    name: string
-    targetAmount: string       // serialized Decimal
-    currentAmount: string      // serialized Decimal
-    targetDate: string | null  // ISO datetime
-    createdAt: string
-  }>
+  data: {
+    items: Array<{
+      id: string
+      name: string
+      targetAmount: string       // serialized Decimal
+      currentAmount: string      // serialized Decimal
+      targetDate: string | null  // ISO datetime
+      createdAt: string
+    }>
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -768,18 +834,25 @@ All scoped to the authenticated user.
 **Query params** — optional
 ```
 active  "true" | "false"   // filter by active status
+page    integer             default: 1
+limit   integer             default: 20  (max 100)
 ```
 
 **Response 200**
 ```ts
 {
-  data: Array<{
-    id: string
-    name: string
-    frequency: "daily" | "weekly"
-    active: boolean
-    createdAt: string
-  }>
+  data: {
+    items: Array<{
+      id: string
+      name: string
+      frequency: "daily" | "weekly"
+      active: boolean
+      createdAt: string
+    }>
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -830,15 +903,26 @@ active  "true" | "false"   // filter by active status
 
 ### `GET /habits/:id/logs`
 
+**Query params** — optional
+```
+page   integer   default: 1
+limit  integer   default: 20  (max 100)
+```
+
 **Response 200**
 ```ts
 {
-  data: Array<{
-    id: string
-    date: string       // ISO datetime (UTC midnight)
-    completed: boolean
-    createdAt: string
-  }>
+  data: {
+    items: Array<{
+      id: string
+      date: string       // ISO datetime (UTC midnight)
+      completed: boolean
+      createdAt: string
+    }>
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -868,16 +952,27 @@ All scoped to the authenticated user.
 
 ### `GET /investment-profiles`
 
+**Query params** — optional
+```
+page   integer   default: 1
+limit  integer   default: 20  (max 100)
+```
+
 **Response 200**
 ```ts
 {
-  data: Array<{
-    id: string
-    strategy: "conservative" | "balanced" | "long_term"
-    monthlyAmount: string   // serialized Decimal
-    expectedReturn: string  // serialized Decimal (percentage 0–100)
-    createdAt: string
-  }>
+  data: {
+    items: Array<{
+      id: string
+      strategy: "conservative" | "balanced" | "long_term"
+      monthlyAmount: string   // serialized Decimal
+      expectedReturn: string  // serialized Decimal (percentage 0–100)
+      createdAt: string
+    }>
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -952,10 +1047,21 @@ All group endpoints require an active or trial subscription (`requireSubscriptio
 ### `GET /groups`
 Returns all groups the authenticated user belongs to.
 
+**Query params** — optional
+```
+page   integer   default: 1
+limit  integer   default: 20  (max 100)
+```
+
 **Response 200**
 ```ts
 {
-  data: GroupObject[]
+  data: {
+    items: GroupObject[]
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -1062,25 +1168,36 @@ Removes a member from the group. Only the group **owner** can remove members. Re
 ### `GET /groups/:id/expenses`
 Returns all expenses for the group. The authenticated user must be a member.
 
+**Query params** — optional
+```
+page   integer   default: 1
+limit  integer   default: 20  (max 100)
+```
+
 **Response 200**
 ```ts
 {
-  data: Array<{
-    id: string
-    groupId: string
-    paidById: string       // userId of who paid
-    amount: string         // serialized Decimal
-    description: string
-    occurredAt: string     // ISO datetime
-    createdAt: string
-    shares: Array<{
+  data: {
+    items: Array<{
       id: string
-      groupMemberId: string
-      amount: string
-      includeInPersonal: boolean
-      transactionId: string | null
+      groupId: string
+      paidById: string       // userId of who paid
+      amount: string         // serialized Decimal
+      description: string
+      occurredAt: string     // ISO datetime
+      createdAt: string
+      shares: Array<{
+        id: string
+        groupMemberId: string
+        amount: string
+        includeInPersonal: boolean
+        transactionId: string | null
+      }>
     }>
-  }>
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -1160,16 +1277,27 @@ Requires `admin` or `super_admin` for all operations. Soft-deleted roles are exc
 
 ### `GET /roles`
 
+**Query params** — optional
+```
+page   integer   default: 1
+limit  integer   default: 20  (max 100)
+```
+
 **Response 200**
 ```ts
 {
-  data: Array<{
-    id: string
-    name: "super_admin" | "admin" | "support" | "user"
-    description: string | null
-    createdAt: string
-    permissions: string[]  // e.g. ["transactions:read", "users:write"]
-  }>
+  data: {
+    items: Array<{
+      id: string
+      name: "super_admin" | "admin" | "support" | "user"
+      description: string | null
+      createdAt: string
+      permissions: string[]  // e.g. ["transactions:read", "users:write"]
+    }>
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -1227,15 +1355,26 @@ Performs a **soft delete**.
 
 ### `GET /permissions`
 
+**Query params** — optional
+```
+page   integer   default: 1
+limit  integer   default: 20  (max 100)
+```
+
 **Response 200**
 ```ts
 {
-  data: Array<{
-    id: string
-    action: string   // format: "resource:operation" e.g. "transactions:read"
-    description: string | null
-    createdAt: string
-  }>
+  data: {
+    items: Array<{
+      id: string
+      action: string   // format: "resource:operation" e.g. "transactions:read"
+      description: string | null
+      createdAt: string
+    }>
+    total: number
+    page: number
+    limit: number
+  }
 }
 ```
 
@@ -1607,6 +1746,7 @@ Effective plan price = priceAmount × (1 - discountPercent / 100)
 
 ## Notes for frontend integration
 
+- **Paginated list responses** return `{ items, total, page, limit }` inside `data`. Use `total` and `limit` to compute `totalPages = Math.ceil(total / limit)` and determine whether a "load more" / next page is available.
 - **Decimal fields** (`amount`, `targetAmount`, `currentAmount`, `monthlyAmount`, `expectedReturn`, `priceAmount`, `discountPercent`) are returned as **strings** to preserve precision. Parse with `parseFloat()` or a decimal library as needed.
 - **Date fields** are returned as ISO 8601 strings. Dates sent to the API must be `"YYYY-MM-DD"` for date-only fields and full ISO datetime (e.g. `"2026-02-19T10:30:00.000Z"`) for datetime fields.
 - **`user.role` on login** — use this field to conditionally show admin UI sections without an extra API call.
