@@ -58,6 +58,7 @@ export class PrismaCategoryRepository implements ICategoryRepository {
         name: data.name,
         icon: data.icon,
         type: data.type as TransactionType,
+        isSystem: data.isSystem ?? false,
       },
       select: categorySelect,
     });

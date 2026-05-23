@@ -38,7 +38,7 @@ export class CategoryController {
   // Admin: creates global category (no userId)
   createGlobal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const category = await this.createCategory.execute(req.body);
+      const category = await this.createCategory.execute(req.body, undefined, true);
       sendSuccess(res, category, 201, 'Category created');
     } catch (err) {
       next(err);

@@ -12,6 +12,7 @@ export interface CreateCategoryData {
   name: string;
   icon?: string;
   type: 'expense' | 'income';
+  isSystem?: boolean;
 }
 
 export interface UpdateCategoryData {
