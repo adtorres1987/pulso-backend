@@ -1,6 +1,7 @@
 # Pulso API Reference
 
-Base URL: `http://localhost:3000/api/v1`
+Base URL (local): `http://localhost:3000/api/v1`
+Base URL (production): set to your Railway deployment URL (e.g. `https://<your-app>.up.railway.app/api/v1`)
 
 ## Authentication
 
@@ -1058,6 +1059,35 @@ Removes a member from the group. Only the group **owner** can remove members. Re
 
 ---
 
+### `GET /groups/:id/expenses`
+Returns all expenses for the group. The authenticated user must be a member.
+
+**Response 200**
+```ts
+{
+  data: Array<{
+    id: string
+    groupId: string
+    paidById: string       // userId of who paid
+    amount: string         // serialized Decimal
+    description: string
+    occurredAt: string     // ISO datetime
+    createdAt: string
+    shares: Array<{
+      id: string
+      groupMemberId: string
+      amount: string
+      includeInPersonal: boolean
+      transactionId: string | null
+    }>
+  }>
+}
+```
+
+**Errors** — `404` if group not found or user is not a member
+
+---
+
 ### `POST /groups/:id/expenses`
 Records a shared expense. The `shares` array defines how the total is split among group members (by `groupMemberId`). The authenticated user must be a group member.
 
@@ -1342,44 +1372,98 @@ Requires `admin` or `super_admin`. Manages global key/value settings.
 | `trial_days` | integer | `30` | Trial period length for new registrations |
 | `group_discount_percent` | integer | `10` | Discount applied when a group reaches the minimum member threshold |
 
-### `GET /admin/app-config`
-
-**Response 200**
+### App Config object shape
 ```ts
 {
-  data: Array<{
-    key: string
-    value: string
-    description: string | null
-    updatedAt: string   // ISO datetime
-  }>
+  key: string           // lowercase letters, numbers, underscores
+  value: string         // always stored as string, even for numeric keys
+  description: string | null
+  updatedAt: string     // ISO datetime
 }
 ```
 
 ---
 
-### `PATCH /admin/app-config/:key`
+### `GET /admin/app-config`
+Returns all config entries.
+
+**Response 200** — `{ data: AppConfigObject[] }`
+
+---
+
+### `GET /admin/app-config/:key`
+
+**Response 200** — `{ data: AppConfigObject }`
+
+**Errors** — `404` if key does not exist
+
+---
+
+### `POST /admin/app-config`
+Creates a new config key. Fails if the key already exists.
 
 **Request body**
 ```ts
 {
-  value: string  // min 1 char — always stored as string, even for numeric values
+  key: string           // min 1 char, pattern: /^[a-z0-9_]+$/
+  value: string         // min 1 char
+  description?: string
 }
 ```
+
+**Response 201** — `{ data: AppConfigObject, message: "Config created" }`
+
+**Errors** — `409` if key already exists · `422` validation
+
+---
+
+### `PATCH /admin/app-config/:key`
+Updates value and/or description. At least one field is required.
+
+**Request body**
+```ts
+{
+  value?: string        // min 1 char
+  description?: string
+}
+```
+
+**Response 200** — `{ data: AppConfigObject, message: "Config updated" }`
+
+**Errors** — `404` if key does not exist · `422` validation (neither field provided, or numeric key has invalid value)
+
+---
+
+### `DELETE /admin/app-config/:key`
+Deletes a config key. The system keys `trial_days` and `group_discount_percent` cannot be deleted.
+
+**Response 204** — no body
+
+**Errors** — `403` if key is a protected system key · `404` if key does not exist
+
+---
+
+## Subscription Plans (public)
+
+### `GET /plans`
+Requires auth. Returns all **active** plans. Use this to populate the plan selection screen before checkout.
 
 **Response 200**
 ```ts
 {
-  data: {
-    key: string
-    value: string
+  data: Array<{
+    id: string
+    name: string
     description: string | null
-    updatedAt: string
-  }
+    priceAmount: string    // serialized Decimal
+    currency: string
+    intervalDays: number
+    isActive: boolean      // always true — inactive plans are filtered out
+    stripePriceId: string | null
+    createdAt: string
+  }>
 }
 ```
-
-**Errors** — `404` if key does not exist · `422` validation
 
 ---
 
