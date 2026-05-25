@@ -412,6 +412,75 @@ Stripe-Signature: t=...,v1=...
 
 ---
 
+## Dashboard
+
+### `GET /dashboard`
+Requires auth. Returns a monthly summary for the authenticated user: income/expense totals, net balance, paginated transaction list, expense breakdown by emotion tag, breakdown by category, and a full 12-month view of the queried year.
+
+**Query params** — all optional
+```
+month  string    "YYYY-MM" — month to query (default: current UTC month)
+page   integer   default: 1   page number for the transactions list
+limit  integer   default: 20  transactions per page (max 100)
+```
+
+**Response 200**
+```ts
+{
+  data: {
+    month: string              // "YYYY-MM" — queried month
+
+    totalIncome: string        // sum of income for the month (Decimal as string)
+    totalExpenses: string      // sum of expenses for the month (Decimal as string)
+    balance: string            // totalIncome − totalExpenses (Decimal as string)
+
+    transactions: {
+      items: Array<{
+        id: string
+        amount: string         // Decimal as string
+        type: "expense" | "income"
+        emotionTag: "need" | "impulse" | "emotional" | null
+        note: string | null
+        occurredAt: string     // ISO datetime
+        createdAt: string
+        categoryId: string | null
+        category: { id: string; name: string; icon: string | null } | null
+      }>
+      total: number            // total transactions in the month (unpaginated count)
+      page: number
+      limit: number
+    }
+
+    byEmotionTag: Array<{      // expenses only (type = "expense")
+      emotionTag: "need" | "impulse" | "emotional" | null  // null = no tag
+      total: string            // sum of amounts (Decimal as string)
+      count: number
+    }>
+
+    byCategory: Array<{        // income and expenses grouped separately by category
+      categoryId: string | null   // null = uncategorised
+      categoryName: string | null
+      categoryIcon: string | null
+      type: "expense" | "income"
+      total: string            // Decimal as string
+      count: number
+    }>
+
+    byMonth: Array<{           // all 12 months of the queried year (zeros for empty months)
+      month: string            // "YYYY-MM"
+      income: string           // Decimal as string — "0" if no transactions
+      expenses: string         // Decimal as string — "0" if no transactions
+      balance: string          // income − expenses
+    }>
+  }
+}
+```
+
+**Errors**
+- `400` — invalid `month` format (must be `YYYY-MM`, month 01–12)
+
+---
+
 ## Categories
 
 Categories can be **global** (created by admin, `userId: null`) or **personal** (created by subscribed users, `userId` is set). Soft-deleted categories are excluded from all responses.
@@ -1019,6 +1088,37 @@ limit  integer   default: 20  (max 100)
 ### `DELETE /investment-profiles/:id`
 
 **Response 204** — no body
+
+---
+
+## Users
+
+### `GET /users/lookup`
+Requires auth. Looks up a user by email address. Intended for the group flow — find a user to add as a group member.
+
+**Query params**
+```
+email  string  required — exact email address to search
+```
+
+**Response 200**
+```ts
+{
+  data: {
+    id: string
+    email: string
+    person: {
+      firstName: string
+      lastName: string
+      avatarUrl: string | null
+    } | null
+  }
+}
+```
+
+**Errors**
+- `400` — `email` query param missing
+- `404` — no user with that email
 
 ---
 
@@ -1758,3 +1858,5 @@ Effective plan price = priceAmount × (1 - discountPercent / 100)
 - **Group discount** — `discountPercent` in `GET /subscriptions/me` reflects the current applied discount. Compute effective price as `priceAmount × (1 - discountPercent / 100)`.
 - **Share inclusion** — `PATCH /groups/:id/expenses/:expenseId/shares/:shareId/include` is a one-time action. Once `transactionId` is set, the endpoint returns `409`. Check `includeInPersonal` before showing the button.
 - **Subscription guard** — endpoints protected by `requireSubscription` return `403` with message `"Subscription required. Your trial or plan has expired."` when the user has no active/trial subscription. Redirect to a paywall screen on this error.
+- **User lookup for groups** — use `GET /users/lookup?email=...` to resolve an email to a `userId` before calling `POST /groups/:id/members`. Returns `404` if the email is not registered.
+- **Dashboard year** — `byMonth` always covers all 12 months of the year derived from the `month` param (e.g. `month=2025-08` → Jan–Dec 2025). Months without transactions return `"0"` for all amounts — safe to use directly for charts without null-checks.

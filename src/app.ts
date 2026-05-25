@@ -23,6 +23,7 @@ import publicPlanRoutes from './modules/subscription-plans/presentation/public-p
 import subscriptionRoutes from './modules/subscriptions/presentation/subscription.routes';
 import groupRoutes from './modules/groups/presentation/group.routes';
 import userRoutes from './modules/users/presentation/user.routes';
+import dashboardRoutes from './modules/dashboard/presentation/dashboard.routes';
 
 const app = express();
 
@@ -57,6 +58,7 @@ app.use('/api/v1/plans', publicPlanRoutes);
 app.use('/api/v1/subscriptions', subscriptionRoutes);
 app.use('/api/v1/groups', groupRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
 
 // Error handling
 app.use(notFound);
