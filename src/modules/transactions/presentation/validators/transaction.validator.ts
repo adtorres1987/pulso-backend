@@ -24,6 +24,6 @@ export const validateTransactionFilters = (req: Request, res: Response, next: Ne
   if (!result.success) {
     return res.status(422).json({ success: false, errors: result.error.flatten().fieldErrors });
   }
-  req.query = result.data as Record<string, string>;
+  req.query = { ...req.query, ...result.data } as Record<string, string>;
   return next();
 };
