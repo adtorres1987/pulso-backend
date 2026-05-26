@@ -1305,6 +1305,36 @@ limit  integer   default: 20  (max 100)
 
 ---
 
+### `GET /groups/:id/expenses/summary`
+Returns a monthly expense summary for the group: total spent, breakdown per member (who paid), and each member's percentage of the total. The authenticated user must be a member of the group.
+
+**Query params** — optional
+```
+month  string   YYYY-MM format — defaults to current UTC month (e.g. 2025-05)
+```
+
+**Response 200**
+```ts
+{
+  data: {
+    month: string              // "YYYY-MM"
+    total: string              // sum of all group expenses in the month (Decimal as string)
+    byMember: Array<{
+      userId: string
+      firstName: string
+      lastName: string
+      avatarUrl: string | null
+      total: string            // amount paid by this member (Decimal as string)
+      percentage: string       // share of total, 2 decimal places (e.g. "66.67")
+    }>                         // empty array if no expenses in the month
+  }
+}
+```
+
+**Errors** — `400` (invalid month format) · `404` (group not found or user not a member)
+
+---
+
 ### `POST /groups/:id/expenses`
 Records a shared expense. The `shares` array defines how the total is split among group members (by `groupMemberId`). The authenticated user must be a group member.
 

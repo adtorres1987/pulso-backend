@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../../types';
+import { AppError } from '../../../middlewares/errorHandler';
 import { GetAllGroupsUseCase } from '../application/use-cases/GetAllGroupsUseCase';
 import { GetGroupByIdUseCase } from '../application/use-cases/GetGroupByIdUseCase';
 import { CreateGroupUseCase } from '../application/use-cases/CreateGroupUseCase';
@@ -8,6 +9,7 @@ import { DeleteGroupUseCase } from '../application/use-cases/DeleteGroupUseCase'
 import { AddGroupMemberUseCase } from '../application/use-cases/AddGroupMemberUseCase';
 import { RemoveGroupMemberUseCase } from '../application/use-cases/RemoveGroupMemberUseCase';
 import { GetGroupExpensesUseCase } from '../application/use-cases/GetGroupExpensesUseCase';
+import { GetGroupExpenseSummaryUseCase } from '../application/use-cases/GetGroupExpenseSummaryUseCase';
 import { CreateGroupExpenseUseCase } from '../application/use-cases/CreateGroupExpenseUseCase';
 import { UpdateGroupExpenseUseCase } from '../application/use-cases/UpdateGroupExpenseUseCase';
 import { DeleteGroupExpenseUseCase } from '../application/use-cases/DeleteGroupExpenseUseCase';
@@ -24,6 +26,7 @@ export class GroupController {
     private readonly addMember: AddGroupMemberUseCase,
     private readonly removeMember: RemoveGroupMemberUseCase,
     private readonly getExpenses: GetGroupExpensesUseCase,
+    private readonly expenseSummaryUC: GetGroupExpenseSummaryUseCase,
     private readonly createExpense: CreateGroupExpenseUseCase,
     private readonly updateExpenseUC: UpdateGroupExpenseUseCase,
     private readonly deleteExpenseUC: DeleteGroupExpenseUseCase,
@@ -75,6 +78,18 @@ export class GroupController {
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
       const result = await this.getExpenses.execute(req.params.id, req.userId!, page, limit);
       sendSuccess(res, { ...result, page, limit });
+    } catch (err) { next(err); }
+  };
+
+  showExpenseSummary = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const now = new Date();
+      const defaultMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+      const month = (req.query.month as string) || defaultMonth;
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+        throw new AppError('Invalid month format. Use YYYY-MM (e.g. 2025-05)', 400);
+      }
+      sendSuccess(res, await this.expenseSummaryUC.execute(req.params.id, req.userId!, month));
     } catch (err) { next(err); }
   };
 

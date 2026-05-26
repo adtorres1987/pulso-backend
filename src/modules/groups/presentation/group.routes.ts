@@ -12,6 +12,7 @@ import { DeleteGroupUseCase } from '../application/use-cases/DeleteGroupUseCase'
 import { AddGroupMemberUseCase } from '../application/use-cases/AddGroupMemberUseCase';
 import { RemoveGroupMemberUseCase } from '../application/use-cases/RemoveGroupMemberUseCase';
 import { GetGroupExpensesUseCase } from '../application/use-cases/GetGroupExpensesUseCase';
+import { GetGroupExpenseSummaryUseCase } from '../application/use-cases/GetGroupExpenseSummaryUseCase';
 import { CreateGroupExpenseUseCase } from '../application/use-cases/CreateGroupExpenseUseCase';
 import { UpdateGroupExpenseUseCase } from '../application/use-cases/UpdateGroupExpenseUseCase';
 import { DeleteGroupExpenseUseCase } from '../application/use-cases/DeleteGroupExpenseUseCase';
@@ -40,6 +41,7 @@ const controller = new GroupController(
   new AddGroupMemberUseCase(groupRepo, subscriptionRepo, configRepo),
   new RemoveGroupMemberUseCase(groupRepo, subscriptionRepo, configRepo),
   new GetGroupExpensesUseCase(groupRepo),
+  new GetGroupExpenseSummaryUseCase(groupRepo),
   new CreateGroupExpenseUseCase(groupRepo),
   new UpdateGroupExpenseUseCase(groupRepo),
   new DeleteGroupExpenseUseCase(groupRepo),
@@ -58,6 +60,7 @@ router.post('/:id/members', ...auth, validateAddMember, controller.addMemberHand
 router.delete('/:id/members/:userId', ...auth, controller.removeMemberHandler);
 
 router.get('/:id/expenses', ...auth, controller.indexExpenses);
+router.get('/:id/expenses/summary', ...auth, controller.showExpenseSummary);
 router.post('/:id/expenses', ...auth, validateCreateGroupExpense, controller.storeExpense);
 router.patch('/:id/expenses/:expenseId', ...auth, validateUpdateGroupExpense, controller.patchExpense);
 router.delete('/:id/expenses/:expenseId', ...auth, controller.destroyExpense);

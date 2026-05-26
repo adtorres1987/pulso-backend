@@ -16,6 +16,26 @@ export interface GroupMemberResult {
   person: { firstName: string; lastName: string; avatarUrl: string | null } | null;
 }
 
+export interface MemberExpenseSummary {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  total: string;
+  percentage: string;
+}
+
+export interface GroupExpenseSummaryData {
+  total: string;
+  byMember: MemberExpenseSummary[];
+}
+
+export interface GroupExpenseSummaryResult {
+  month: string;
+  total: string;
+  byMember: MemberExpenseSummary[];
+}
+
 export interface GroupExpenseResult {
   id: string;
   groupId: string;
@@ -82,4 +102,5 @@ export interface IGroupRepository {
   deleteExpense(expenseId: string): Promise<void>;
   includeShareInPersonal(shareId: string, transactionId: string): Promise<GroupExpenseShareResult>;
   unlinkShareByTransactionId(transactionId: string): Promise<void>;
+  getExpenseSummary(groupId: string, startDate: Date, endDate: Date): Promise<GroupExpenseSummaryData>;
 }

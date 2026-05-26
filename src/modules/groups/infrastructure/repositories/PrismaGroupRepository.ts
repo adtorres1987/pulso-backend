@@ -5,9 +5,11 @@ import {
   CreateGroupExpenseData,
   GroupExpenseResult,
   GroupExpenseShareResult,
+  GroupExpenseSummaryData,
   GroupMemberResult,
   GroupResult,
   IGroupRepository,
+  MemberExpenseSummary,
   PaginatedGroupExpenses,
   PaginatedGroups,
   UpdateGroupExpenseData,
@@ -194,6 +196,44 @@ export class PrismaGroupRepository implements IGroupRepository {
 
       await tx.groupExpense.delete({ where: { id: expenseId } });
     });
+  }
+
+  async getExpenseSummary(groupId: string, startDate: Date, endDate: Date): Promise<GroupExpenseSummaryData> {
+    const grouped = await prisma.groupExpense.groupBy({
+      by: ['paidById'],
+      where: { groupId, occurredAt: { gte: startDate, lt: endDate } },
+      _sum: { amount: true },
+    });
+
+    if (grouped.length === 0) return { total: '0', byMember: [] };
+
+    const total = grouped.reduce(
+      (acc, g) => acc.add(g._sum.amount ?? new Decimal(0)),
+      new Decimal(0),
+    );
+
+    const userIds = grouped.map((g) => g.paidById);
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, person: { select: { firstName: true, lastName: true, avatarUrl: true } } },
+    });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const byMember: MemberExpenseSummary[] = grouped.map((g) => {
+      const amount = new Decimal(g._sum.amount ?? 0);
+      const user = userMap.get(g.paidById);
+      const percentage = total.isZero() ? new Decimal(0) : amount.div(total).mul(100);
+      return {
+        userId: g.paidById,
+        firstName: user?.person?.firstName ?? '',
+        lastName: user?.person?.lastName ?? '',
+        avatarUrl: user?.person?.avatarUrl ?? null,
+        total: amount.toString(),
+        percentage: percentage.toDecimalPlaces(2).toString(),
+      };
+    });
+
+    return { total: total.toString(), byMember };
   }
 
   async unlinkShareByTransactionId(transactionId: string): Promise<void> {
