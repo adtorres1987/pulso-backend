@@ -81,4 +81,5 @@ export interface IGroupRepository {
   updateExpense(expenseId: string, data: UpdateGroupExpenseData): Promise<GroupExpenseResult>;
   deleteExpense(expenseId: string): Promise<void>;
   includeShareInPersonal(shareId: string, transactionId: string): Promise<GroupExpenseShareResult>;
+  unlinkShareByTransactionId(transactionId: string): Promise<void>;
 }

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PrismaTransactionRepository } from '../infrastructure/repositories/PrismaTransactionRepository';
+import { PrismaGroupRepository } from '../../groups/infrastructure/repositories/PrismaGroupRepository';
 import { GetAllTransactionsUseCase } from '../application/use-cases/GetAllTransactionsUseCase';
 import { GetTransactionByIdUseCase } from '../application/use-cases/GetTransactionByIdUseCase';
 import { CreateTransactionUseCase } from '../application/use-cases/CreateTransactionUseCase';
@@ -16,12 +17,13 @@ import { authenticate } from '../../../middlewares/auth';
 const router = Router();
 
 const transactionRepository = new PrismaTransactionRepository();
+const groupRepository = new PrismaGroupRepository();
 const transactionController = new TransactionController(
   new GetAllTransactionsUseCase(transactionRepository),
   new GetTransactionByIdUseCase(transactionRepository),
   new CreateTransactionUseCase(transactionRepository),
   new UpdateTransactionUseCase(transactionRepository),
-  new DeleteTransactionUseCase(transactionRepository),
+  new DeleteTransactionUseCase(transactionRepository, groupRepository),
 );
 
 router.get('/', authenticate, validateTransactionFilters, transactionController.getAll);

@@ -182,6 +182,13 @@ export class PrismaGroupRepository implements IGroupRepository {
     await prisma.groupExpense.delete({ where: { id: expenseId } });
   }
 
+  async unlinkShareByTransactionId(transactionId: string): Promise<void> {
+    await prisma.groupExpenseShare.updateMany({
+      where: { transactionId },
+      data: { includeInPersonal: false, transactionId: null },
+    });
+  }
+
   async includeShareInPersonal(shareId: string, transactionId: string): Promise<GroupExpenseShareResult> {
     const row = await prisma.groupExpenseShare.update({
       where: { id: shareId },
