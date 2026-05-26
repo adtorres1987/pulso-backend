@@ -179,7 +179,21 @@ export class PrismaGroupRepository implements IGroupRepository {
   }
 
   async deleteExpense(expenseId: string): Promise<void> {
-    await prisma.groupExpense.delete({ where: { id: expenseId } });
+    await prisma.$transaction(async (tx) => {
+      const shares = await tx.groupExpenseShare.findMany({
+        where: { groupExpenseId: expenseId, transactionId: { not: null } },
+        select: { transactionId: true },
+      });
+      const transactionIds = shares.map((s) => s.transactionId!);
+
+      await tx.groupExpenseShare.deleteMany({ where: { groupExpenseId: expenseId } });
+
+      if (transactionIds.length > 0) {
+        await tx.transaction.deleteMany({ where: { id: { in: transactionIds } } });
+      }
+
+      await tx.groupExpense.delete({ where: { id: expenseId } });
+    });
   }
 
   async unlinkShareByTransactionId(transactionId: string): Promise<void> {
