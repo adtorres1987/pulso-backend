@@ -201,22 +201,23 @@ export class PrismaGroupRepository implements IGroupRepository {
 
   async getExpenseSummary(groupId: string, startDate: Date, endDate: Date): Promise<GroupExpenseSummaryData> {
     const [grouped, members] = await Promise.all([
-      prisma.groupExpense.groupBy({
-        by: ['paidById'],
-        where: { groupId, occurredAt: { gte: startDate, lt: endDate } },
+      prisma.groupExpenseShare.groupBy({
+        by: ['groupMemberId'],
+        where: { groupExpense: { groupId, occurredAt: { gte: startDate, lt: endDate } } },
         _sum: { amount: true },
       }),
       prisma.groupMember.findMany({
         where: { groupId },
         select: {
+          id: true,
           userId: true,
           user: { select: { person: { select: { firstName: true, lastName: true, avatarUrl: true } } } },
         },
       }),
     ]);
 
-    const expenseMap = new Map(
-      grouped.map((g) => [g.paidById, new Decimal(g._sum.amount ?? 0)]),
+    const shareMap = new Map(
+      grouped.map((g) => [g.groupMemberId, new Decimal(g._sum.amount ?? 0)]),
     );
 
     const total = grouped.reduce(
@@ -225,7 +226,7 @@ export class PrismaGroupRepository implements IGroupRepository {
     );
 
     const byMember: MemberExpenseSummary[] = members.map((m) => {
-      const amount = expenseMap.get(m.userId) ?? new Decimal(0);
+      const amount = shareMap.get(m.id) ?? new Decimal(0);
       const percentage = total.isZero() ? new Decimal(0) : amount.div(total).mul(100);
       return {
         userId: m.userId,
