@@ -10,6 +10,7 @@ import {
   IGroupRepository,
   PaginatedGroupExpenses,
   PaginatedGroups,
+  UpdateGroupExpenseData,
 } from '../../domain/repositories/IGroupRepository';
 
 const memberSelect = {
@@ -146,6 +147,39 @@ export class PrismaGroupRepository implements IGroupRepository {
       prisma.groupExpense.count({ where }),
     ]);
     return { items: rows.map(mapExpense), total };
+  }
+
+  async findExpenseByIdAndGroup(expenseId: string, groupId: string): Promise<GroupExpenseResult | null> {
+    const row = await prisma.groupExpense.findFirst({
+      where: { id: expenseId, groupId },
+      include: expenseInclude,
+    });
+    return row ? mapExpense(row) : null;
+  }
+
+  async updateExpense(expenseId: string, data: UpdateGroupExpenseData): Promise<GroupExpenseResult> {
+    const row = await prisma.$transaction(async (tx) => {
+      if (data.shares) {
+        await tx.groupExpenseShare.deleteMany({ where: { groupExpenseId: expenseId } });
+        await tx.groupExpenseShare.createMany({
+          data: data.shares.map((s) => ({ groupExpenseId: expenseId, groupMemberId: s.groupMemberId, amount: s.amount })),
+        });
+      }
+      return tx.groupExpense.update({
+        where: { id: expenseId },
+        data: {
+          ...(data.amount !== undefined && { amount: data.amount }),
+          ...(data.description !== undefined && { description: data.description }),
+          ...(data.occurredAt !== undefined && { occurredAt: data.occurredAt }),
+        },
+        include: expenseInclude,
+      });
+    });
+    return mapExpense(row);
+  }
+
+  async deleteExpense(expenseId: string): Promise<void> {
+    await prisma.groupExpense.delete({ where: { id: expenseId } });
   }
 
   async includeShareInPersonal(shareId: string, transactionId: string): Promise<GroupExpenseShareResult> {

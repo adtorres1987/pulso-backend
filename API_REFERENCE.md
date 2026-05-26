@@ -1348,6 +1348,60 @@ Records a shared expense. The `shares` array defines how the total is split amon
 
 ---
 
+### `PATCH /groups/:id/expenses/:expenseId`
+Updates a group expense. Only the original payer (`paidById`) or a group owner may call this endpoint. All fields are optional — only the provided fields are updated. If `shares` is provided the entire set of shares is replaced.
+
+**Request body** (all fields optional)
+```ts
+{
+  amount?: number                         // positive
+  description?: string                    // min 1 char
+  occurredAt?: string                     // ISO datetime
+  shares?: Array<{
+    groupMemberId: string                 // UUID of the GroupMember record
+    amount: number                        // positive
+  }>                                      // min 1 share — replaces all existing shares
+}
+```
+
+**Response 200**
+```ts
+{
+  data: {
+    id: string
+    groupId: string
+    paidById: string
+    amount: string         // serialized Decimal
+    description: string
+    occurredAt: string
+    createdAt: string
+    shares: Array<{
+      id: string
+      groupMemberId: string
+      amount: string
+      includeInPersonal: boolean
+      transactionId: string | null
+    }>
+  }
+  message: "Expense updated"
+}
+```
+
+**Errors** — `403` (not the payer or owner) · `404` (group or expense not found) · `422`
+
+---
+
+### `DELETE /groups/:id/expenses/:expenseId`
+Deletes a group expense and all its shares. Only the original payer (`paidById`) or a group owner may call this endpoint.
+
+**No request body required.**
+
+**Response 204** — no body.
+
+**Errors** — `403` · `404`
+
+---
+
 ### `PATCH /groups/:id/expenses/:expenseId/shares/:shareId/include`
 Links a group expense share to the authenticated user's personal transactions. Creates a `Transaction` record and marks `includeInPersonal: true`. Can only be done once per share (the `transactionId` becomes non-null and the endpoint returns `409` if called again).
 

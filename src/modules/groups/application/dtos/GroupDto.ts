@@ -21,7 +21,18 @@ export const CreateGroupExpenseSchema = z.object({
     .min(1),
 });
 
+export const UpdateGroupExpenseSchema = z.object({
+  amount: z.number().positive().optional(),
+  description: z.string().min(1).optional(),
+  occurredAt: z.coerce.date().optional(),
+  shares: z
+    .array(z.object({ groupMemberId: z.string().uuid(), amount: z.number().positive() }))
+    .min(1)
+    .optional(),
+});
+
 export type CreateGroupDto = z.infer<typeof CreateGroupSchema>;
 export type UpdateGroupDto = z.infer<typeof UpdateGroupSchema>;
 export type AddMemberDto = z.infer<typeof AddMemberSchema>;
 export type CreateGroupExpenseDto = z.infer<typeof CreateGroupExpenseSchema>;
+export type UpdateGroupExpenseDto = z.infer<typeof UpdateGroupExpenseSchema>;

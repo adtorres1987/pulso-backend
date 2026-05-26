@@ -9,6 +9,8 @@ import { AddGroupMemberUseCase } from '../application/use-cases/AddGroupMemberUs
 import { RemoveGroupMemberUseCase } from '../application/use-cases/RemoveGroupMemberUseCase';
 import { GetGroupExpensesUseCase } from '../application/use-cases/GetGroupExpensesUseCase';
 import { CreateGroupExpenseUseCase } from '../application/use-cases/CreateGroupExpenseUseCase';
+import { UpdateGroupExpenseUseCase } from '../application/use-cases/UpdateGroupExpenseUseCase';
+import { DeleteGroupExpenseUseCase } from '../application/use-cases/DeleteGroupExpenseUseCase';
 import { IncludeShareInPersonalUseCase } from '../application/use-cases/IncludeShareInPersonalUseCase';
 import { sendSuccess } from '../../../utils/response';
 
@@ -23,6 +25,8 @@ export class GroupController {
     private readonly removeMember: RemoveGroupMemberUseCase,
     private readonly getExpenses: GetGroupExpensesUseCase,
     private readonly createExpense: CreateGroupExpenseUseCase,
+    private readonly updateExpenseUC: UpdateGroupExpenseUseCase,
+    private readonly deleteExpenseUC: DeleteGroupExpenseUseCase,
     private readonly includeShare: IncludeShareInPersonalUseCase,
   ) {}
 
@@ -78,6 +82,20 @@ export class GroupController {
     try {
       const expense = await this.createExpense.execute(req.params.id, req.userId!, req.body);
       sendSuccess(res, expense, 201, 'Expense created');
+    } catch (err) { next(err); }
+  };
+
+  patchExpense = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const expense = await this.updateExpenseUC.execute(req.params.id, req.params.expenseId, req.userId!, req.body);
+      sendSuccess(res, expense, 200, 'Expense updated');
+    } catch (err) { next(err); }
+  };
+
+  destroyExpense = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.deleteExpenseUC.execute(req.params.id, req.params.expenseId, req.userId!);
+      sendSuccess(res, null, 204);
     } catch (err) { next(err); }
   };
 

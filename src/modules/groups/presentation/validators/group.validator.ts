@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AddMemberSchema, CreateGroupExpenseSchema, CreateGroupSchema, UpdateGroupSchema } from '../../application/dtos/GroupDto';
+import { AddMemberSchema, CreateGroupExpenseSchema, CreateGroupSchema, UpdateGroupExpenseSchema, UpdateGroupSchema } from '../../application/dtos/GroupDto';
 
 const makeValidator = (schema: { safeParse: (d: unknown) => { success: boolean; data?: unknown; error?: { flatten: () => { fieldErrors: unknown } } } }) =>
   (req: Request, res: Response, next: NextFunction): void => {
@@ -12,3 +12,4 @@ export const validateCreateGroup = makeValidator(CreateGroupSchema);
 export const validateUpdateGroup = makeValidator(UpdateGroupSchema);
 export const validateAddMember = makeValidator(AddMemberSchema);
 export const validateCreateGroupExpense = makeValidator(CreateGroupExpenseSchema);
+export const validateUpdateGroupExpense = makeValidator(UpdateGroupExpenseSchema);
