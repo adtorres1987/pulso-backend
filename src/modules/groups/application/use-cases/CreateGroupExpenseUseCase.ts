@@ -10,15 +10,22 @@ export class CreateGroupExpenseUseCase {
     if (!group) throw new AppError('Group not found', 404);
 
     const memberIds = new Set(group.members.map((m) => m.id));
+    const memberUserIds = new Set(group.members.map((m) => m.userId));
+
     for (const share of dto.shares) {
       if (!memberIds.has(share.groupMemberId)) {
         throw new AppError(`groupMemberId ${share.groupMemberId} does not belong to this group`, 422);
       }
     }
 
+    const paidById = dto.paidByUserId ?? userId;
+    if (!memberUserIds.has(paidById)) {
+      throw new AppError('paidByUserId does not belong to this group', 422);
+    }
+
     return this.repo.createExpense({
       groupId,
-      paidById: userId,
+      paidById,
       amount: dto.amount,
       description: dto.description,
       occurredAt: dto.occurredAt,

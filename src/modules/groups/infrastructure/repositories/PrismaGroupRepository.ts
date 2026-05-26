@@ -173,6 +173,7 @@ export class PrismaGroupRepository implements IGroupRepository {
           ...(data.amount !== undefined && { amount: data.amount }),
           ...(data.description !== undefined && { description: data.description }),
           ...(data.occurredAt !== undefined && { occurredAt: data.occurredAt }),
+          ...(data.paidByUserId !== undefined && { paidById: data.paidByUserId }),
         },
         include: expenseInclude,
       });

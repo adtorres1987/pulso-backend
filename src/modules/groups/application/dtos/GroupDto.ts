@@ -16,6 +16,7 @@ export const CreateGroupExpenseSchema = z.object({
   amount: z.number().positive(),
   description: z.string().min(1),
   occurredAt: z.coerce.date(),
+  paidByUserId: z.string().uuid().optional(),
   shares: z
     .array(z.object({ groupMemberId: z.string().uuid(), amount: z.number().positive() }))
     .min(1),
@@ -25,6 +26,7 @@ export const UpdateGroupExpenseSchema = z.object({
   amount: z.number().positive().optional(),
   description: z.string().min(1).optional(),
   occurredAt: z.coerce.date().optional(),
+  paidByUserId: z.string().uuid().optional(),
   shares: z
     .array(z.object({ groupMemberId: z.string().uuid(), amount: z.number().positive() }))
     .min(1)

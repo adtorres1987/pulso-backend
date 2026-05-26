@@ -17,13 +17,19 @@ export class UpdateGroupExpenseUseCase {
       throw new AppError('Only the expense payer or a group owner can update this expense', 403);
     }
 
+    const memberIds = new Set(group.members.map((m) => m.id));
+    const memberUserIds = new Set(group.members.map((m) => m.userId));
+
     if (dto.shares) {
-      const memberIds = new Set(group.members.map((m) => m.id));
       for (const share of dto.shares) {
         if (!memberIds.has(share.groupMemberId)) {
           throw new AppError(`groupMemberId ${share.groupMemberId} does not belong to this group`, 422);
         }
       }
+    }
+
+    if (dto.paidByUserId !== undefined && !memberUserIds.has(dto.paidByUserId)) {
+      throw new AppError('paidByUserId does not belong to this group', 422);
     }
 
     return this.repo.updateExpense(expenseId, dto);

@@ -73,6 +73,7 @@ export interface UpdateGroupExpenseData {
   amount?: number;
   description?: string;
   occurredAt?: Date;
+  paidByUserId?: string;
   shares?: Array<{ groupMemberId: string; amount: number }>;
 }
 
