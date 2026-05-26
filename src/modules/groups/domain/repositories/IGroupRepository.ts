@@ -97,7 +97,7 @@ export interface IGroupRepository {
   removeMember(groupId: string, userId: string): Promise<void>;
   findMember(groupId: string, userId: string): Promise<GroupMemberResult | null>;
   createExpense(data: CreateGroupExpenseData): Promise<GroupExpenseResult>;
-  findExpensesByGroup(groupId: string, page: number, limit: number): Promise<PaginatedGroupExpenses>;
+  findExpensesByGroup(groupId: string, page: number, limit: number, month?: string): Promise<PaginatedGroupExpenses>;
   findExpenseByIdAndGroup(expenseId: string, groupId: string): Promise<GroupExpenseResult | null>;
   updateExpense(expenseId: string, data: UpdateGroupExpenseData): Promise<GroupExpenseResult>;
   deleteExpense(expenseId: string): Promise<void>;

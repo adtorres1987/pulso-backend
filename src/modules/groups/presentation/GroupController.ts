@@ -76,7 +76,10 @@ export class GroupController {
     try {
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
-      const result = await this.getExpenses.execute(req.params.id, req.userId!, page, limit);
+      const month = typeof req.query.month === 'string' && /^\d{4}-\d{2}$/.test(req.query.month)
+        ? req.query.month
+        : undefined;
+      const result = await this.getExpenses.execute(req.params.id, req.userId!, page, limit, month);
       sendSuccess(res, { ...result, page, limit });
     } catch (err) { next(err); }
   };

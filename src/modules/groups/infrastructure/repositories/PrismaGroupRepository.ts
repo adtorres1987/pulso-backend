@@ -142,8 +142,12 @@ export class PrismaGroupRepository implements IGroupRepository {
     return mapExpense(row);
   }
 
-  async findExpensesByGroup(groupId: string, page = 1, limit = 20): Promise<PaginatedGroupExpenses> {
-    const where = { groupId };
+  async findExpensesByGroup(groupId: string, page = 1, limit = 20, month?: string): Promise<PaginatedGroupExpenses> {
+    const where: { groupId: string; occurredAt?: { gte: Date; lt: Date } } = { groupId };
+    if (month) {
+      const [y, m] = month.split('-').map(Number);
+      where.occurredAt = { gte: new Date(y!, m! - 1, 1), lt: new Date(y!, m!, 1) };
+    }
     const [rows, total] = await prisma.$transaction([
       prisma.groupExpense.findMany({ where, include: expenseInclude, orderBy: { occurredAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
       prisma.groupExpense.count({ where }),
