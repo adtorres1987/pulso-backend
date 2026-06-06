@@ -4,6 +4,9 @@ export interface HabitResult {
   frequency: string;
   active: boolean;
   createdAt: Date;
+  currentStreak: number;
+  longestStreak: number;
+  completedDates: string[]; // YYYY-MM-DD, last 30 days
 }
 
 export interface HabitLogResult {
