@@ -25,6 +25,7 @@ import groupRoutes from './modules/groups/presentation/group.routes';
 import userRoutes from './modules/users/presentation/user.routes';
 import dashboardRoutes from './modules/dashboard/presentation/dashboard.routes';
 import budgetRoutes from './modules/budgets/presentation/budget.routes';
+import recurringTransactionRoutes from './modules/recurring-transactions/presentation/recurringTransaction.routes';
 
 const app = express();
 
@@ -61,6 +62,7 @@ app.use('/api/v1/groups', groupRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/budgets', budgetRoutes);
+app.use('/api/v1/recurring-transactions', recurringTransactionRoutes);
 
 // Error handling
 app.use(notFound);
