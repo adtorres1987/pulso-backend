@@ -1,7 +1,7 @@
 import { EmotionTag, TransactionType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../../config/prisma';
-import { IDashboardRepository, DashboardData, MonthlyBreakdown } from '../../domain/repositories/IDashboardRepository';
+import { IDashboardRepository, DashboardData, MonthlyBreakdown, BudgetBreakdown } from '../../domain/repositories/IDashboardRepository';
 import { TransactionResult } from '../../../transactions/domain/repositories/ITransactionRepository';
 
 const transactionSelect = {
@@ -37,7 +37,9 @@ export class PrismaDashboardRepository implements IDashboardRepository {
     const yearStart = new Date(Date.UTC(year, 0, 1));
     const yearEnd = new Date(Date.UTC(year + 1, 0, 1));
 
-    const [transactions, total, incomeAgg, expenseAgg, emotionGroups, categoryGroups, monthlyRows] = await Promise.all([
+    const month = `${startDate.getUTCFullYear()}-${String(startDate.getUTCMonth() + 1).padStart(2, '0')}`;
+
+    const [transactions, total, incomeAgg, expenseAgg, emotionGroups, categoryGroups, monthlyRows, budgetRows] = await Promise.all([
       prisma.transaction.findMany({
         where,
         select: transactionSelect,
@@ -72,6 +74,16 @@ export class PrismaDashboardRepository implements IDashboardRepository {
         GROUP BY month, type
         ORDER BY month ASC
       `,
+      prisma.budget.findMany({
+        where: { userId, month },
+        select: {
+          id: true,
+          categoryId: true,
+          amount: true,
+          category: { select: { name: true, icon: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
 
     const catIds = [
@@ -106,6 +118,33 @@ export class PrismaDashboardRepository implements IDashboardRepository {
       };
     });
 
+    // Build budgets with spent amounts
+    const budgets: BudgetBreakdown[] = await Promise.all(
+      budgetRows.map(async (b) => {
+        const spentAgg = await prisma.transaction.aggregate({
+          where: {
+            userId,
+            type: TransactionType.expense,
+            categoryId: b.categoryId ?? undefined,
+            ...(b.categoryId === null && { categoryId: null }),
+            occurredAt: dateFilter,
+          },
+          _sum: { amount: true },
+        });
+        const spent = Number(spentAgg._sum.amount ?? 0);
+        const limit = Number(b.amount);
+        return {
+          id: b.id,
+          categoryId: b.categoryId,
+          categoryName: b.category?.name ?? null,
+          categoryIcon: b.category?.icon ?? null,
+          amount: b.amount.toString(),
+          spent: spent.toFixed(2),
+          percentage: limit > 0 ? Math.round((spent / limit) * 100) : 0,
+        };
+      }),
+    );
+
     return {
       totalIncome,
       totalExpenses,
@@ -128,6 +167,7 @@ export class PrismaDashboardRepository implements IDashboardRepository {
         };
       }),
       byMonth,
+      budgets,
     };
   }
 }

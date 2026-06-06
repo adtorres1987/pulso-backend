@@ -22,6 +22,16 @@ export interface MonthlyBreakdown {
   balance: string;
 }
 
+export interface BudgetBreakdown {
+  id: string;
+  categoryId: string | null;
+  categoryName: string | null;
+  categoryIcon: string | null;
+  amount: string;
+  spent: string;
+  percentage: number;
+}
+
 export interface DashboardData {
   totalIncome: string;
   totalExpenses: string;
@@ -30,6 +40,7 @@ export interface DashboardData {
   byEmotionTag: EmotionTagBreakdown[];
   byCategory: CategoryBreakdown[];
   byMonth: MonthlyBreakdown[];
+  budgets: BudgetBreakdown[];
 }
 
 export interface DashboardResult {
@@ -41,6 +52,7 @@ export interface DashboardResult {
   byEmotionTag: EmotionTagBreakdown[];
   byCategory: CategoryBreakdown[];
   byMonth: MonthlyBreakdown[];
+  budgets: BudgetBreakdown[];
 }
 
 export interface IDashboardRepository {
