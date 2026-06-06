@@ -8,6 +8,11 @@ import {
   UpdateRecurringTransactionData,
 } from '../../domain/repositories/IRecurringTransactionRepository';
 
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function computeNextRunDate(from: string, frequency: RecurringFrequency): string {
   const [y, m, d] = from.split('-').map(Number);
   const date = new Date(y!, m! - 1, d!);
@@ -91,21 +96,46 @@ export class PrismaRecurringTransactionRepository implements IRecurringTransacti
   }
 
   async create(data: CreateRecurringTransactionData): Promise<RecurringTransactionResult> {
-    const row = await prisma.recurringTransaction.create({
-      data: {
-        userId: data.userId,
-        type: data.type,
-        amount: data.amount,
-        categoryId: data.categoryId ?? null,
-        note: data.note ?? null,
-        emotionTag: (data.emotionTag as never) ?? null,
-        frequency: data.frequency,
-        startDate: data.startDate,
-        endDate: data.endDate ?? null,
-        nextRunDate: data.startDate,
-      },
-      select: recurringSelect,
+    const today = todayISO();
+    const isPast = data.startDate <= today;
+    const firstNextRunDate = isPast
+      ? computeNextRunDate(data.startDate, data.frequency)
+      : data.startDate;
+
+    const row = await prisma.$transaction(async (tx) => {
+      const recurring = await tx.recurringTransaction.create({
+        data: {
+          userId: data.userId,
+          type: data.type,
+          amount: data.amount,
+          categoryId: data.categoryId ?? null,
+          note: data.note ?? null,
+          emotionTag: (data.emotionTag as never) ?? null,
+          frequency: data.frequency,
+          startDate: data.startDate,
+          endDate: data.endDate ?? null,
+          nextRunDate: firstNextRunDate,
+        },
+        select: recurringSelect,
+      });
+
+      if (isPast) {
+        await tx.transaction.create({
+          data: {
+            userId: data.userId,
+            type: data.type,
+            amount: data.amount,
+            categoryId: data.categoryId ?? null,
+            note: data.note ?? null,
+            emotionTag: (data.emotionTag as never) ?? null,
+            occurredAt: new Date(`${data.startDate}T12:00:00`),
+          },
+        });
+      }
+
+      return recurring;
     });
+
     return toResult(row);
   }
 
