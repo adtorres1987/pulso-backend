@@ -5,8 +5,11 @@ import { GetTransactionByIdUseCase } from '../application/use-cases/GetTransacti
 import { CreateTransactionUseCase } from '../application/use-cases/CreateTransactionUseCase';
 import { UpdateTransactionUseCase } from '../application/use-cases/UpdateTransactionUseCase';
 import { DeleteTransactionUseCase } from '../application/use-cases/DeleteTransactionUseCase';
+import { AddTransactionImageUseCase } from '../application/use-cases/AddTransactionImageUseCase';
+import { RemoveTransactionImageUseCase } from '../application/use-cases/RemoveTransactionImageUseCase';
 import { sendSuccess } from '../../../utils/response';
 import { TransactionFilters } from '../domain/repositories/ITransactionRepository';
+import { AppError } from '../../../middlewares/errorHandler';
 
 export class TransactionController {
   constructor(
@@ -15,6 +18,8 @@ export class TransactionController {
     private readonly createTransaction: CreateTransactionUseCase,
     private readonly updateTransaction: UpdateTransactionUseCase,
     private readonly deleteTransaction: DeleteTransactionUseCase,
+    private readonly addTransactionImage: AddTransactionImageUseCase,
+    private readonly removeTransactionImage: RemoveTransactionImageUseCase,
   ) {}
 
   getAll = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -59,6 +64,25 @@ export class TransactionController {
   remove = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       await this.deleteTransaction.execute(req.params.id, req.userId!);
+      sendSuccess(res, null, 204);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  uploadImage = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.file) throw new AppError('No image provided', 400);
+      const image = await this.addTransactionImage.execute(req.params.id, req.userId!, req.file.buffer);
+      sendSuccess(res, image, 201, 'Image uploaded');
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  deleteImage = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.removeTransactionImage.execute(req.params.imageId, req.params.id, req.userId!);
       sendSuccess(res, null, 204);
     } catch (err) {
       next(err);

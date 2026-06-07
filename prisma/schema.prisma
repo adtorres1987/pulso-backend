@@ -193,8 +193,21 @@ model Transaction {
   category            Category?           @relation(fields: [categoryId], references: [id])
   categoryId          String?
   groupExpenseShare   GroupExpenseShare?
+  images              TransactionImage[]
 
   @@map("transactions")
+}
+
+model TransactionImage {
+  id            String      @id @default(uuid())
+  transactionId String
+  url           String
+  publicId      String
+  createdAt     DateTime    @default(now())
+
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("transaction_images")
 }
 
 model Category {

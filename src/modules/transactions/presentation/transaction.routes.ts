@@ -6,6 +6,8 @@ import { GetTransactionByIdUseCase } from '../application/use-cases/GetTransacti
 import { CreateTransactionUseCase } from '../application/use-cases/CreateTransactionUseCase';
 import { UpdateTransactionUseCase } from '../application/use-cases/UpdateTransactionUseCase';
 import { DeleteTransactionUseCase } from '../application/use-cases/DeleteTransactionUseCase';
+import { AddTransactionImageUseCase } from '../application/use-cases/AddTransactionImageUseCase';
+import { RemoveTransactionImageUseCase } from '../application/use-cases/RemoveTransactionImageUseCase';
 import { TransactionController } from './TransactionController';
 import {
   validateCreateTransaction,
@@ -13,6 +15,7 @@ import {
   validateUpdateTransaction,
 } from './validators/transaction.validator';
 import { authenticate } from '../../../middlewares/auth';
+import { uploadImage } from '../../../middlewares/upload';
 
 const router = Router();
 
@@ -24,6 +27,8 @@ const transactionController = new TransactionController(
   new CreateTransactionUseCase(transactionRepository),
   new UpdateTransactionUseCase(transactionRepository),
   new DeleteTransactionUseCase(transactionRepository, groupRepository),
+  new AddTransactionImageUseCase(transactionRepository),
+  new RemoveTransactionImageUseCase(transactionRepository),
 );
 
 router.get('/export', authenticate, transactionController.exportCsv);
@@ -32,5 +37,8 @@ router.get('/:id', authenticate, transactionController.getOne);
 router.post('/', authenticate, validateCreateTransaction, transactionController.create);
 router.patch('/:id', authenticate, validateUpdateTransaction, transactionController.update);
 router.delete('/:id', authenticate, transactionController.remove);
+
+router.post('/:id/images', authenticate, uploadImage, transactionController.uploadImage);
+router.delete('/:id/images/:imageId', authenticate, transactionController.deleteImage);
 
 export default router;

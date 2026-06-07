@@ -1,3 +1,11 @@
+export interface TransactionImageResult {
+  id: string;
+  transactionId: string;
+  url: string;
+  publicId: string;
+  createdAt: Date;
+}
+
 export interface TransactionResult {
   id: string;
   amount: string;
@@ -8,6 +16,7 @@ export interface TransactionResult {
   createdAt: Date;
   categoryId: string | null;
   category: { id: string; name: string; icon: string | null } | null;
+  images: TransactionImageResult[];
 }
 
 export interface TransactionFilters {
@@ -52,4 +61,6 @@ export interface ITransactionRepository {
   create(data: CreateTransactionData): Promise<TransactionResult>;
   update(id: string, data: UpdateTransactionData): Promise<TransactionResult>;
   delete(id: string): Promise<void>;
+  addImage(transactionId: string, url: string, publicId: string): Promise<TransactionImageResult>;
+  removeImage(imageId: string): Promise<TransactionImageResult>;
 }

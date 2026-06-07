@@ -6,6 +6,7 @@ import {
   ITransactionRepository,
   PaginatedTransactions,
   TransactionFilters,
+  TransactionImageResult,
   TransactionResult,
   UpdateTransactionData,
 } from '../../domain/repositories/ITransactionRepository';
@@ -20,9 +21,10 @@ const transactionSelect = {
   createdAt: true,
   categoryId: true,
   category: { select: { id: true, name: true, icon: true } },
+  images: { select: { id: true, transactionId: true, url: true, publicId: true, createdAt: true }, orderBy: { createdAt: 'asc' as const } },
 };
 
-const toResult = (raw: {
+type RawTransaction = {
   id: string;
   amount: Decimal;
   type: TransactionType;
@@ -32,7 +34,10 @@ const toResult = (raw: {
   createdAt: Date;
   categoryId: string | null;
   category: { id: string; name: string; icon: string | null } | null;
-}): TransactionResult => ({
+  images: { id: string; transactionId: string; url: string; publicId: string; createdAt: Date }[];
+};
+
+const toResult = (raw: RawTransaction): TransactionResult => ({
   ...raw,
   amount: raw.amount.toString(),
 });
@@ -114,5 +119,15 @@ export class PrismaTransactionRepository implements ITransactionRepository {
 
   async delete(id: string): Promise<void> {
     await prisma.transaction.delete({ where: { id } });
+  }
+
+  async addImage(transactionId: string, url: string, publicId: string): Promise<TransactionImageResult> {
+    return prisma.transactionImage.create({
+      data: { transactionId, url, publicId },
+    });
+  }
+
+  async removeImage(imageId: string): Promise<TransactionImageResult> {
+    return prisma.transactionImage.delete({ where: { id: imageId } });
   }
 }

@@ -26,7 +26,7 @@ const toResult = (raw: {
   createdAt: Date;
   categoryId: string | null;
   category: { id: string; name: string; icon: string | null } | null;
-}): TransactionResult => ({ ...raw, amount: raw.amount.toString() });
+}): TransactionResult => ({ ...raw, amount: raw.amount.toString(), images: [] });
 
 export class PrismaDashboardRepository implements IDashboardRepository {
   async getDashboard(userId: string, startDate: Date, endDate: Date, page: number, limit: number): Promise<DashboardData> {
