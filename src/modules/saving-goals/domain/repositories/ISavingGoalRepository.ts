@@ -5,6 +5,7 @@ export interface SavingGoalResult {
   currentAmount: string;
   targetDate: Date | null;
   createdAt: Date;
+  projectedCompletionDate: string | null; // YYYY-MM-DD
 }
 
 export interface CreateSavingGoalData {

@@ -17,6 +17,19 @@ const goalSelect = {
   createdAt: true,
 };
 
+function computeProjectedDate(current: Decimal, target: Decimal, createdAt: Date): string | null {
+  const cur = parseFloat(current.toString());
+  const tgt = parseFloat(target.toString());
+  if (cur >= tgt || cur <= 0) return null;
+  const now = new Date();
+  const daysElapsed = (now.getTime() - createdAt.getTime()) / 86400000;
+  if (daysElapsed < 1) return null;
+  const dailyRate = cur / daysElapsed;
+  const daysToComplete = (tgt - cur) / dailyRate;
+  const projected = new Date(now.getTime() + daysToComplete * 86400000);
+  return projected.toISOString().slice(0, 10);
+}
+
 const toResult = (raw: {
   id: string;
   name: string;
@@ -28,6 +41,7 @@ const toResult = (raw: {
   ...raw,
   targetAmount: raw.targetAmount.toString(),
   currentAmount: raw.currentAmount.toString(),
+  projectedCompletionDate: computeProjectedDate(raw.currentAmount, raw.targetAmount, raw.createdAt),
 });
 
 export class PrismaSavingGoalRepository implements ISavingGoalRepository {
