@@ -64,4 +64,32 @@ export class TransactionController {
       next(err);
     }
   };
+
+  exportCsv = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const filters: TransactionFilters = {};
+      if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
+      if (req.query.endDate) filters.endDate = new Date(`${req.query.endDate as string}T23:59:59`);
+
+      const { items } = await this.getAllTransactions.execute(req.userId!, filters, 1, 10000);
+
+      const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+      const header = 'Date,Type,Category,Amount,Note,Emotion';
+      const rows = items.map((tx) => [
+        new Date(tx.occurredAt).toISOString().slice(0, 10),
+        tx.type,
+        tx.category?.name ?? '',
+        (tx.type === 'expense' ? '-' : '') + parseFloat(tx.amount).toFixed(2),
+        escape(tx.note ?? ''),
+        tx.emotionTag ?? '',
+      ].join(','));
+
+      const filename = `pulso_${new Date().toISOString().slice(0, 10)}.csv`;
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send([header, ...rows].join('\n'));
+    } catch (err) {
+      next(err);
+    }
+  };
 }

@@ -26,6 +26,7 @@ const transactionController = new TransactionController(
   new DeleteTransactionUseCase(transactionRepository, groupRepository),
 );
 
+router.get('/export', authenticate, transactionController.exportCsv);
 router.get('/', authenticate, validateTransactionFilters, transactionController.getAll);
 router.get('/:id', authenticate, transactionController.getOne);
 router.post('/', authenticate, validateCreateTransaction, transactionController.create);
