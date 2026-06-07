@@ -1,7 +1,7 @@
 import { EmotionTag, TransactionType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../../config/prisma';
-import { IDashboardRepository, DashboardData, MonthlyBreakdown, BudgetBreakdown } from '../../domain/repositories/IDashboardRepository';
+import { IDashboardRepository, DashboardData, MonthlyBreakdown, BudgetBreakdown, CategoryTrendData } from '../../domain/repositories/IDashboardRepository';
 import { TransactionResult } from '../../../transactions/domain/repositories/ITransactionRepository';
 
 const transactionSelect = {
@@ -169,5 +169,105 @@ export class PrismaDashboardRepository implements IDashboardRepository {
       byMonth,
       budgets,
     };
+  }
+
+  async getCategoryTrend(userId: string, months: number): Promise<CategoryTrendData> {
+    const now = new Date();
+    // Start of the oldest month we need
+    const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
+    const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+    // Build month labels for all N months
+    const monthLabels: string[] = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      monthLabels.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`);
+    }
+
+    // Fetch per-month, per-category totals (expenses only for category trend)
+    const [expenseRows, incomeExpenseRows] = await Promise.all([
+      prisma.$queryRaw<Array<{ month: string; categoryId: string | null; total: Decimal }>>`
+        SELECT
+          TO_CHAR("occurredAt" AT TIME ZONE 'UTC', 'YYYY-MM') AS month,
+          "categoryId",
+          SUM(amount) AS total
+        FROM transactions
+        WHERE "userId" = ${userId}
+          AND "occurredAt" >= ${startDate}
+          AND "occurredAt" < ${endDate}
+          AND type = 'expense'
+        GROUP BY month, "categoryId"
+      `,
+      prisma.$queryRaw<Array<{ month: string; type: string; total: Decimal }>>`
+        SELECT
+          TO_CHAR("occurredAt" AT TIME ZONE 'UTC', 'YYYY-MM') AS month,
+          type::text,
+          SUM(amount) AS total
+        FROM transactions
+        WHERE "userId" = ${userId}
+          AND "occurredAt" >= ${startDate}
+          AND "occurredAt" < ${endDate}
+        GROUP BY month, type
+      `,
+    ]);
+
+    // Build monthly trend (income / expenses / balance per month)
+    const monthlyMap = new Map<string, { income: Decimal; expenses: Decimal }>();
+    for (const row of incomeExpenseRows) {
+      const entry = monthlyMap.get(row.month) ?? { income: new Decimal(0), expenses: new Decimal(0) };
+      if (row.type === 'income') entry.income = new Decimal(row.total);
+      else entry.expenses = new Decimal(row.total);
+      monthlyMap.set(row.month, entry);
+    }
+
+    const monthlyTrend = monthLabels.map(m => {
+      const entry = monthlyMap.get(m) ?? { income: new Decimal(0), expenses: new Decimal(0) };
+      return {
+        month: m,
+        income: entry.income.toString(),
+        expenses: entry.expenses.toString(),
+        balance: entry.income.sub(entry.expenses).toString(),
+      };
+    });
+
+    // Find top 5 categories by total expense across the window
+    const catTotals = new Map<string | null, Decimal>();
+    for (const row of expenseRows) {
+      const key = row.categoryId ?? null;
+      catTotals.set(key, (catTotals.get(key) ?? new Decimal(0)).add(new Decimal(row.total)));
+    }
+    const top5Keys = [...catTotals.entries()]
+      .sort((a, b) => Number(b[1].sub(a[1])))
+      .slice(0, 5)
+      .map(([id]) => id);
+
+    // Fetch category metadata
+    const catIds = top5Keys.filter((id): id is string => id !== null);
+    const categories = catIds.length > 0
+      ? await prisma.category.findMany({ where: { id: { in: catIds } }, select: { id: true, name: true, icon: true } })
+      : [];
+    const catMeta = new Map(categories.map(c => [c.id, c]));
+
+    // Build per-category per-month totals
+    const expenseIndex = new Map<string, Map<string | null, Decimal>>();
+    for (const row of expenseRows) {
+      if (!expenseIndex.has(row.month)) expenseIndex.set(row.month, new Map());
+      expenseIndex.get(row.month)!.set(row.categoryId ?? null, new Decimal(row.total));
+    }
+
+    const categoryTrend = top5Keys.map(catId => {
+      const meta = catId ? catMeta.get(catId) : undefined;
+      return {
+        categoryId: catId,
+        categoryName: meta?.name ?? null,
+        categoryIcon: meta?.icon ?? null,
+        byMonth: monthLabels.map(m => ({
+          month: m,
+          total: (expenseIndex.get(m)?.get(catId) ?? new Decimal(0)).toString(),
+        })),
+      };
+    });
+
+    return { monthlyTrend, categoryTrend };
   }
 }

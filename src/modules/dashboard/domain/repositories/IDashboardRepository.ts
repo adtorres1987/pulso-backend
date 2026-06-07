@@ -55,6 +55,25 @@ export interface DashboardResult {
   budgets: BudgetBreakdown[];
 }
 
+export interface MonthlyTrend {
+  month: string;    // "YYYY-MM"
+  income: string;
+  expenses: string;
+  balance: string;
+}
+
+export interface CategoryTrendItem {
+  categoryId: string | null;
+  categoryName: string | null;
+  categoryIcon: string | null;
+  byMonth: { month: string; total: string }[];
+}
+
+export interface CategoryTrendData {
+  monthlyTrend: MonthlyTrend[];
+  categoryTrend: CategoryTrendItem[];
+}
+
 export interface IDashboardRepository {
   getDashboard(
     userId: string,
@@ -63,4 +82,5 @@ export interface IDashboardRepository {
     page: number,
     limit: number,
   ): Promise<DashboardData>;
+  getCategoryTrend(userId: string, months: number): Promise<CategoryTrendData>;
 }

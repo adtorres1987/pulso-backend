@@ -1,11 +1,15 @@
 import { NextFunction, Response } from 'express';
 import { AuthRequest } from '../../../types';
 import { GetDashboardUseCase } from '../application/use-cases/GetDashboardUseCase';
+import { GetCategoryTrendUseCase } from '../application/use-cases/GetCategoryTrendUseCase';
 import { AppError } from '../../../middlewares/errorHandler';
 import { sendSuccess } from '../../../utils/response';
 
 export class DashboardController {
-  constructor(private readonly getDashboardUseCase: GetDashboardUseCase) {}
+  constructor(
+    private readonly getDashboardUseCase: GetDashboardUseCase,
+    private readonly getCategoryTrendUseCase: GetCategoryTrendUseCase,
+  ) {}
 
   index = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -21,6 +25,16 @@ export class DashboardController {
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
 
       const result = await this.getDashboardUseCase.execute(req.userId!, month, page, limit);
+      sendSuccess(res, result);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  categoryTrend = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const months = Math.min(12, Math.max(1, parseInt(req.query.months as string) || 6));
+      const result = await this.getCategoryTrendUseCase.execute(req.userId!, months);
       sendSuccess(res, result);
     } catch (err) {
       next(err);
