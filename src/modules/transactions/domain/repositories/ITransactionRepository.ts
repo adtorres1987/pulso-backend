@@ -16,6 +16,9 @@ export interface TransactionFilters {
   emotionTag?: 'need' | 'impulse' | 'emotional';
   startDate?: Date;
   endDate?: Date;
+  search?: string;
+  minAmount?: string;
+  maxAmount?: string;
 }
 
 export interface CreateTransactionData {

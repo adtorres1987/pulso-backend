@@ -52,6 +52,20 @@ export class PrismaTransactionRepository implements ITransactionRepository {
             },
           }
         : {}),
+      ...(filters.minAmount || filters.maxAmount
+        ? {
+            amount: {
+              ...(filters.minAmount && { gte: parseFloat(filters.minAmount) }),
+              ...(filters.maxAmount && { lte: parseFloat(filters.maxAmount) }),
+            },
+          }
+        : {}),
+      ...(filters.search && {
+        OR: [
+          { note: { contains: filters.search, mode: 'insensitive' as const } },
+          { category: { name: { contains: filters.search, mode: 'insensitive' as const } } },
+        ],
+      }),
     };
     const [rows, total] = await prisma.$transaction([
       prisma.transaction.findMany({ where, select: transactionSelect, orderBy: { occurredAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
