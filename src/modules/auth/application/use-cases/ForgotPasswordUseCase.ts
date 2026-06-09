@@ -28,6 +28,6 @@ export class ForgotPasswordUseCase {
     await this.userRepository.createPasswordResetToken(user.id, token, expiresAt);
 
     const resetLink = `${env.FRONTEND_URL}/reset-password?token=${token}`;
-    await this.emailService.sendPasswordReset(user.email, resetLink);
+    await this.emailService.sendPasswordReset(user.email, resetLink, expiryHours);
   }
 }
