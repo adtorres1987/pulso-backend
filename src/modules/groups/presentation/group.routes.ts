@@ -17,6 +17,7 @@ import { CreateGroupExpenseUseCase } from '../application/use-cases/CreateGroupE
 import { UpdateGroupExpenseUseCase } from '../application/use-cases/UpdateGroupExpenseUseCase';
 import { DeleteGroupExpenseUseCase } from '../application/use-cases/DeleteGroupExpenseUseCase';
 import { IncludeShareInPersonalUseCase } from '../application/use-cases/IncludeShareInPersonalUseCase';
+import { UpdateMemberPercentageUseCase } from '../application/use-cases/UpdateMemberPercentageUseCase';
 import { GroupController } from './GroupController';
 import {
   validateAddMember,
@@ -24,6 +25,7 @@ import {
   validateCreateGroupExpense,
   validateUpdateGroup,
   validateUpdateGroupExpense,
+  validateUpdateMemberPercentage,
 } from './validators/group.validator';
 
 const router = Router();
@@ -46,6 +48,7 @@ const controller = new GroupController(
   new UpdateGroupExpenseUseCase(groupRepo),
   new DeleteGroupExpenseUseCase(groupRepo),
   new IncludeShareInPersonalUseCase(groupRepo),
+  new UpdateMemberPercentageUseCase(groupRepo),
 );
 
 const auth = [authenticate, requireSubscription];
@@ -58,6 +61,7 @@ router.delete('/:id', ...auth, controller.destroy);
 
 router.post('/:id/members', ...auth, validateAddMember, controller.addMemberHandler);
 router.delete('/:id/members/:userId', ...auth, controller.removeMemberHandler);
+router.patch('/:id/members/:userId/percentage', ...auth, validateUpdateMemberPercentage, controller.updateMemberPercentageHandler);
 
 router.get('/:id/expenses', ...auth, controller.indexExpenses);
 router.get('/:id/expenses/summary', ...auth, controller.showExpenseSummary);

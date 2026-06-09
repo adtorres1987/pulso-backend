@@ -396,11 +396,12 @@ model Group {
 }
 
 model GroupMember {
-  id       String          @id @default(uuid())
-  groupId  String
-  userId   String
-  role     GroupMemberRole @default(member)
-  joinedAt DateTime        @default(now())
+  id         String          @id @default(uuid())
+  groupId    String
+  userId     String
+  role       GroupMemberRole @default(member)
+  percentage Decimal         @default(0) @db.Decimal(5, 2)
+  joinedAt   DateTime        @default(now())
 
   group    Group           @relation(fields: [groupId], references: [id])
   user     User            @relation(fields: [userId], references: [id])

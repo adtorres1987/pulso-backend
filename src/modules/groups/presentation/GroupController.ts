@@ -14,6 +14,7 @@ import { CreateGroupExpenseUseCase } from '../application/use-cases/CreateGroupE
 import { UpdateGroupExpenseUseCase } from '../application/use-cases/UpdateGroupExpenseUseCase';
 import { DeleteGroupExpenseUseCase } from '../application/use-cases/DeleteGroupExpenseUseCase';
 import { IncludeShareInPersonalUseCase } from '../application/use-cases/IncludeShareInPersonalUseCase';
+import { UpdateMemberPercentageUseCase } from '../application/use-cases/UpdateMemberPercentageUseCase';
 import { sendSuccess } from '../../../utils/response';
 
 export class GroupController {
@@ -31,6 +32,7 @@ export class GroupController {
     private readonly updateExpenseUC: UpdateGroupExpenseUseCase,
     private readonly deleteExpenseUC: DeleteGroupExpenseUseCase,
     private readonly includeShare: IncludeShareInPersonalUseCase,
+    private readonly updateMemberPct: UpdateMemberPercentageUseCase,
   ) {}
 
   index = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -121,6 +123,13 @@ export class GroupController {
     try {
       const share = await this.includeShare.execute(req.params.id, req.params.expenseId, req.params.shareId, req.userId!);
       sendSuccess(res, share, 200, 'Share linked to personal transactions');
+    } catch (err) { next(err); }
+  };
+
+  updateMemberPercentageHandler = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const member = await this.updateMemberPct.execute(req.params.id, req.userId!, req.params.userId, req.body.percentage);
+      sendSuccess(res, member, 200, 'Percentage updated');
     } catch (err) { next(err); }
   };
 }

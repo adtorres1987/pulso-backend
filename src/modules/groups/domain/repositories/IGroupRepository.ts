@@ -12,6 +12,7 @@ export interface GroupMemberResult {
   id: string;
   userId: string;
   role: GroupMemberRole;
+  percentage: number;
   joinedAt: Date;
   person: { firstName: string; lastName: string; avatarUrl: string | null } | null;
 }
@@ -23,6 +24,8 @@ export interface MemberExpenseSummary {
   avatarUrl: string | null;
   total: string;
   percentage: string;
+  responsibilityPct: string;
+  balance: string;
 }
 
 export interface GroupExpenseSummaryData {
@@ -96,6 +99,7 @@ export interface IGroupRepository {
   addMember(groupId: string, userId: string): Promise<GroupMemberResult>;
   removeMember(groupId: string, userId: string): Promise<void>;
   findMember(groupId: string, userId: string): Promise<GroupMemberResult | null>;
+  updateMemberPercentage(groupId: string, userId: string, percentage: number): Promise<GroupMemberResult>;
   createExpense(data: CreateGroupExpenseData): Promise<GroupExpenseResult>;
   findExpensesByGroup(groupId: string, page: number, limit: number, month?: string): Promise<PaginatedGroupExpenses>;
   findExpenseByIdAndGroup(expenseId: string, groupId: string): Promise<GroupExpenseResult | null>;

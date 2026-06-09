@@ -19,6 +19,7 @@ const memberSelect = {
   id: true,
   userId: true,
   role: true,
+  percentage: true,
   joinedAt: true,
   user: { select: { person: { select: { firstName: true, lastName: true, avatarUrl: true } } } },
 };
@@ -38,12 +39,13 @@ const shareSelect = {
 const expenseInclude = { shares: { select: shareSelect } };
 
 const mapMember = (r: {
-  id: string; userId: string; role: string; joinedAt: Date;
+  id: string; userId: string; role: string; percentage: Decimal; joinedAt: Date;
   user: { person: { firstName: string; lastName: string; avatarUrl: string | null } | null } | null;
 }): GroupMemberResult => ({
   id: r.id,
   userId: r.userId,
   role: r.role as GroupMemberResult['role'],
+  percentage: parseFloat(r.percentage.toString()),
   joinedAt: r.joinedAt,
   person: r.user?.person ?? null,
 });
@@ -65,7 +67,7 @@ const mapExpense = (r: {
 
 const mapGroup = (r: {
   id: string; name: string; createdBy: string; createdAt: Date;
-  members: Array<{ id: string; userId: string; role: string; joinedAt: Date; user: { person: { firstName: string; lastName: string; avatarUrl: string | null } | null } | null }>;
+  members: Array<{ id: string; userId: string; role: string; percentage: Decimal; joinedAt: Date; user: { person: { firstName: string; lastName: string; avatarUrl: string | null } | null } | null }>;
 }): GroupResult => ({ ...r, members: r.members.map(mapMember) });
 
 export class PrismaGroupRepository implements IGroupRepository {
@@ -117,6 +119,15 @@ export class PrismaGroupRepository implements IGroupRepository {
 
   async removeMember(groupId: string, userId: string): Promise<void> {
     await prisma.groupMember.deleteMany({ where: { groupId, userId } });
+  }
+
+  async updateMemberPercentage(groupId: string, userId: string, percentage: number): Promise<GroupMemberResult> {
+    const row = await prisma.groupMember.update({
+      where: { groupId_userId: { groupId, userId } },
+      data: { percentage },
+      select: memberSelect,
+    });
+    return mapMember(row);
   }
 
   async findMember(groupId: string, userId: string): Promise<GroupMemberResult | null> {
@@ -215,6 +226,7 @@ export class PrismaGroupRepository implements IGroupRepository {
         select: {
           id: true,
           userId: true,
+          percentage: true,
           user: { select: { person: { select: { firstName: true, lastName: true, avatarUrl: true } } } },
         },
       }),
@@ -231,14 +243,19 @@ export class PrismaGroupRepository implements IGroupRepository {
 
     const byMember: MemberExpenseSummary[] = members.map((m) => {
       const amount = shareMap.get(m.id) ?? new Decimal(0);
-      const percentage = total.isZero() ? new Decimal(0) : amount.div(total).mul(100);
+      const spendPct = total.isZero() ? new Decimal(0) : amount.div(total).mul(100);
+      const responsibilityPct = new Decimal(m.percentage.toString());
+      const expected = total.mul(responsibilityPct).div(100);
+      const balance = amount.minus(expected);
       return {
         userId: m.userId,
         firstName: m.user?.person?.firstName ?? '',
         lastName: m.user?.person?.lastName ?? '',
         avatarUrl: m.user?.person?.avatarUrl ?? null,
         total: amount.toString(),
-        percentage: percentage.toDecimalPlaces(2).toString(),
+        percentage: spendPct.toDecimalPlaces(2).toString(),
+        responsibilityPct: responsibilityPct.toString(),
+        balance: balance.toDecimalPlaces(2).toString(),
       };
     });
 

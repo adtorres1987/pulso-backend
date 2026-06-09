@@ -33,8 +33,13 @@ export const UpdateGroupExpenseSchema = z.object({
     .optional(),
 });
 
+export const UpdateMemberPercentageSchema = z.object({
+  percentage: z.number().min(0).max(100),
+});
+
 export type CreateGroupDto = z.infer<typeof CreateGroupSchema>;
 export type UpdateGroupDto = z.infer<typeof UpdateGroupSchema>;
 export type AddMemberDto = z.infer<typeof AddMemberSchema>;
 export type CreateGroupExpenseDto = z.infer<typeof CreateGroupExpenseSchema>;
 export type UpdateGroupExpenseDto = z.infer<typeof UpdateGroupExpenseSchema>;
+export type UpdateMemberPercentageDto = z.infer<typeof UpdateMemberPercentageSchema>;
