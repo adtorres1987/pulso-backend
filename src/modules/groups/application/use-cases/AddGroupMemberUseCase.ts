@@ -25,7 +25,8 @@ export class AddGroupMemberUseCase {
 
     // Recalculate group discount for all members after adding
     const discountPercent = await this.configRepo.getValueAsNumber(APP_CONFIG_KEYS.GROUP_DISCOUNT_PERCENT, 10);
-    await this.subscriptionRepo.syncGroupDiscounts(groupId, discountPercent, 3);
+    const minMembers = await this.configRepo.getValueAsNumber(APP_CONFIG_KEYS.GROUP_MIN_MEMBERS, 3);
+    await this.subscriptionRepo.syncGroupDiscounts(groupId, discountPercent, minMembers);
 
     return member;
   }

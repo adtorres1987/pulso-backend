@@ -36,7 +36,7 @@ const registerUserUseCase = new RegisterUserUseCase(userRepository, createTrialS
 const loginUseCase = new LoginUseCase(userRepository, jwtService);
 const refreshTokenUseCase = new RefreshTokenUseCase(jwtService, blacklistService);
 const logoutUseCase = new LogoutUseCase(jwtService, blacklistService);
-const forgotPasswordUseCase = new ForgotPasswordUseCase(userRepository, emailService);
+const forgotPasswordUseCase = new ForgotPasswordUseCase(userRepository, emailService, new PrismaAppConfigRepository());
 const resetPasswordUseCase = new ResetPasswordUseCase(userRepository);
 const authController = new AuthController(
   registerUserUseCase,

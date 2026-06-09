@@ -28,6 +28,9 @@ export const TransactionFiltersSchema = z.object({
   emotionTag: emotionTagEnum.optional(),
   startDate: z.string().date().optional().transform((v) => (v ? new Date(`${v}T00:00:00.000Z`) : undefined)),
   endDate: z.string().date().optional().transform((v) => (v ? new Date(`${v}T23:59:59.999Z`) : undefined)),
+  search: z.string().min(1).optional(),
+  minAmount: z.string().regex(/^\d+(\.\d+)?$/, 'Must be a positive number').optional(),
+  maxAmount: z.string().regex(/^\d+(\.\d+)?$/, 'Must be a positive number').optional(),
 });
 
 export type CreateTransactionDto = z.infer<typeof CreateTransactionSchema>;

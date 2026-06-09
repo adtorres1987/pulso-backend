@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PrismaTransactionRepository } from '../infrastructure/repositories/PrismaTransactionRepository';
 import { PrismaGroupRepository } from '../../groups/infrastructure/repositories/PrismaGroupRepository';
+import { PrismaAppConfigRepository } from '../../app-config/infrastructure/repositories/PrismaAppConfigRepository';
 import { GetAllTransactionsUseCase } from '../application/use-cases/GetAllTransactionsUseCase';
 import { GetTransactionByIdUseCase } from '../application/use-cases/GetTransactionByIdUseCase';
 import { CreateTransactionUseCase } from '../application/use-cases/CreateTransactionUseCase';
@@ -29,6 +30,7 @@ const transactionController = new TransactionController(
   new DeleteTransactionUseCase(transactionRepository, groupRepository),
   new AddTransactionImageUseCase(transactionRepository),
   new RemoveTransactionImageUseCase(transactionRepository),
+  new PrismaAppConfigRepository(),
 );
 
 router.get('/export', authenticate, transactionController.exportCsv);

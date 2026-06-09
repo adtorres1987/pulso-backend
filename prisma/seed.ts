@@ -117,6 +117,25 @@ async function main() {
 
   console.log('Test user seeded:', testUser.email);
 
+  // 6. Default AppConfig values
+  const appConfigDefaults = [
+    { key: 'trial_days', value: '30', description: 'Trial period length for new registrations (days)' },
+    { key: 'group_discount_percent', value: '10', description: 'Discount percentage applied when a group reaches the minimum member threshold' },
+    { key: 'group_min_members', value: '3', description: 'Minimum number of active group members required to activate the group discount' },
+    { key: 'password_reset_expiry_hours', value: '1', description: 'How long a password-reset link remains valid (hours)' },
+    { key: 'csv_export_max_rows', value: '10000', description: 'Maximum number of transaction rows returned by the CSV export endpoint' },
+  ];
+
+  for (const entry of appConfigDefaults) {
+    await prisma.appConfig.upsert({
+      where: { key: entry.key },
+      update: {},
+      create: entry,
+    });
+  }
+
+  console.log('AppConfig seeded:', appConfigDefaults.map((e) => e.key).join(', '));
+
   console.log('\nSeed complete. Credentials:');
   console.log('  superadmin@pulso.com / Admin123!');
   console.log('  admin@pulso.com      / Admin123!');

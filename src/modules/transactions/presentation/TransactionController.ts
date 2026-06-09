@@ -10,6 +10,7 @@ import { RemoveTransactionImageUseCase } from '../application/use-cases/RemoveTr
 import { sendSuccess } from '../../../utils/response';
 import { TransactionFilters } from '../domain/repositories/ITransactionRepository';
 import { AppError } from '../../../middlewares/errorHandler';
+import { APP_CONFIG_KEYS, IAppConfigRepository } from '../../app-config/domain/repositories/IAppConfigRepository';
 
 export class TransactionController {
   constructor(
@@ -20,6 +21,7 @@ export class TransactionController {
     private readonly deleteTransaction: DeleteTransactionUseCase,
     private readonly addTransactionImage: AddTransactionImageUseCase,
     private readonly removeTransactionImage: RemoveTransactionImageUseCase,
+    private readonly configRepo: IAppConfigRepository,
   ) {}
 
   getAll = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -95,7 +97,8 @@ export class TransactionController {
       if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
       if (req.query.endDate) filters.endDate = new Date(`${req.query.endDate as string}T23:59:59`);
 
-      const { items } = await this.getAllTransactions.execute(req.userId!, filters, 1, 10000);
+      const maxRows = await this.configRepo.getValueAsNumber(APP_CONFIG_KEYS.CSV_EXPORT_MAX_ROWS, 10000);
+      const { items } = await this.getAllTransactions.execute(req.userId!, filters, 1, maxRows);
 
       const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
       const header = 'Date,Type,Category,Amount,Note,Emotion';

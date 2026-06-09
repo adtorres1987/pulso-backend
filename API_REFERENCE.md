@@ -472,12 +472,56 @@ limit  integer   default: 20  transactions per page (max 100)
       expenses: string         // Decimal as string — "0" if no transactions
       balance: string          // income − expenses
     }>
+
+    budgets: Array<{           // active budgets for the queried month with real-time spend
+      id: string
+      categoryId: string | null   // null = overall budget (no specific category)
+      categoryName: string | null
+      categoryIcon: string | null
+      amount: string           // budget limit (Decimal as string)
+      spent: string            // actual spending in the month (Decimal as string)
+      percentage: number       // spent / amount × 100 (can exceed 100)
+    }>
   }
 }
 ```
 
 **Errors**
 - `400` — invalid `month` format (must be `YYYY-MM`, month 01–12)
+
+---
+
+### `GET /dashboard/category-trend`
+Requires auth. Returns monthly income/expense totals and a per-category spending breakdown for the last N months. Useful for rendering multi-series trend charts.
+
+**Query params** — optional
+```
+months  integer   1–12 — number of past months to include (default: 6)
+```
+
+**Response 200**
+```ts
+{
+  data: {
+    monthlyTrend: Array<{      // one entry per month, newest last
+      month: string            // "YYYY-MM"
+      income: string           // Decimal as string
+      expenses: string         // Decimal as string
+      balance: string          // income − expenses
+    }>
+
+    categoryTrend: Array<{     // one entry per category that has transactions in the period
+      categoryId: string | null
+      categoryName: string | null
+      categoryIcon: string | null
+      byMonth: Array<{         // one entry per month in the requested range
+        month: string          // "YYYY-MM"
+        total: string          // Decimal as string — sum of expenses for this category in this month
+      }>
+    }>
+  }
+}
+```
 
 ---
 
@@ -633,6 +677,23 @@ Requires active or trial subscription. Soft-deletes the user's own category.
 
 All scoped to the authenticated user.
 
+### `GET /transactions/export`
+Returns a CSV file with the authenticated user's transactions. Accepts the same date filters as the list endpoint. Use `startDate`/`endDate` to limit the export range; omit both to export all transactions.
+
+**Query params** — optional
+```
+startDate  "YYYY-MM-DD"
+endDate    "YYYY-MM-DD"
+```
+
+**Response 200** — `Content-Type: text/csv; Content-Disposition: attachment; filename="pulso_YYYY-MM-DD.csv"`
+
+CSV columns: `Date, Type, Category, Amount, Note, Emotion`
+- `Amount` is negative for expenses, positive for income
+- `Note` and `Emotion` are empty strings if not set
+
+---
+
 ### `GET /transactions`
 
 **Query params** — all optional
@@ -642,6 +703,9 @@ categoryId  UUID
 emotionTag  "need" | "impulse" | "emotional"
 startDate   "YYYY-MM-DD"
 endDate     "YYYY-MM-DD"
+search      string   — partial match on note or category name (case-insensitive)
+minAmount   number   — lower bound (inclusive) for amount
+maxAmount   number   — upper bound (inclusive) for amount
 page        integer   default: 1
 limit       integer   default: 20  (max 100)
 ```
@@ -664,6 +728,13 @@ limit       integer   default: 20  (max 100)
         name: string
         icon: string | null
       } | null
+      images: Array<{
+        id: string
+        transactionId: string
+        url: string             // Cloudinary URL
+        publicId: string
+        createdAt: string
+      }>                        // empty array if no images uploaded
     }>
     total: number
     page: number
@@ -676,7 +747,7 @@ limit       integer   default: 20  (max 100)
 
 ### `GET /transactions/:id`
 
-**Response 200** — single transaction (same shape as above)
+**Response 200** — single transaction (same shape as above, including `images`)
 
 **Errors** — `404` if not found or not owned by user
 
@@ -722,6 +793,45 @@ limit       integer   default: 20  (max 100)
 ### `DELETE /transactions/:id`
 
 **Response 204** — no body
+
+---
+
+### `POST /transactions/:id/images`
+Uploads an image to Cloudinary and attaches it to the transaction. Send as `multipart/form-data` with the file in the `image` field.
+
+**Request** — `Content-Type: multipart/form-data`
+```
+image  File   // image/* only, max 5 MB
+```
+
+**Response 201**
+```ts
+{
+  data: {
+    id: string
+    transactionId: string
+    url: string        // Cloudinary URL
+    publicId: string   // Cloudinary public ID
+    createdAt: string
+  }
+  message: "Image uploaded"
+}
+```
+
+**Errors**
+- `400` — no file provided
+- `404` — transaction not found or not owned by user
+
+---
+
+### `DELETE /transactions/:id/images/:imageId`
+Removes an image from Cloudinary and unlinks it from the transaction.
+
+**Response 204** — no body
+
+**Errors** — `404` if image not found or not owned by user
+
+> **Note:** `GET /transactions` and `GET /transactions/:id` both include an `images` array in the response. Each entry has `{ id, transactionId, url, publicId, createdAt }`. The array is empty if no images have been uploaded.
 
 ---
 
@@ -1306,7 +1416,7 @@ limit  integer   default: 20  (max 100)
 ---
 
 ### `GET /groups/:id/expenses/summary`
-Returns a monthly expense summary for the group: total spent, breakdown per member (who paid), and each member's percentage of the total. The authenticated user must be a member of the group.
+Returns a monthly expense summary for the group: total of all shares in the month, breakdown per member (their assigned share amount), and each member's percentage of the total. All group members appear in `byMember` even if they have no share in the period (with `total: "0"` and `percentage: "0.00"`). The authenticated user must be a member.
 
 **Query params** — optional
 ```
@@ -1318,15 +1428,15 @@ month  string   YYYY-MM format — defaults to current UTC month (e.g. 2025-05)
 {
   data: {
     month: string              // "YYYY-MM"
-    total: string              // sum of all group expenses in the month (Decimal as string)
+    total: string              // sum of all GroupExpenseShare amounts in the month (Decimal as string)
     byMember: Array<{
       userId: string
       firstName: string
       lastName: string
       avatarUrl: string | null
-      total: string            // amount paid by this member (Decimal as string)
-      percentage: string       // share of total, 2 decimal places (e.g. "66.67")
-    }>                         // empty array if no expenses in the month
+      total: string            // sum of this member's shares in the month (Decimal as string)
+      percentage: string       // share of total, 2 decimal places (e.g. "66.67") — "0.00" if no expenses
+    }>                         // all group members always included
   }
 }
 ```
@@ -1344,6 +1454,7 @@ Records a shared expense. The `shares` array defines how the total is split amon
   amount: number                          // positive — total expense amount
   description: string                     // min 1 char
   occurredAt: string                      // ISO datetime
+  paidByUserId?: string                   // UUID of the user who paid — defaults to the authenticated user; must be a group member
   shares: Array<{
     groupMemberId: string                 // UUID of the GroupMember record
     amount: number                        // positive — this member's share
@@ -1387,6 +1498,7 @@ Updates a group expense. Only the original payer (`paidById`) or a group owner m
   amount?: number                         // positive
   description?: string                    // min 1 char
   occurredAt?: string                     // ISO datetime
+  paidByUserId?: string                   // UUID of the user who paid — must be a group member
   shares?: Array<{
     groupMemberId: string                 // UUID of the GroupMember record
     amount: number                        // positive
@@ -1452,6 +1564,211 @@ Links a group expense share to the authenticated user's personal transactions. C
 ```
 
 **Errors** — `403` · `404` · `409` if already linked
+
+---
+
+## Budgets
+
+All scoped to the authenticated user. A budget defines a spending limit for a category (or overall) for a specific month. `spent` and `percentage` are computed from transactions in that month.
+
+### Budget object shape
+```ts
+{
+  id: string
+  categoryId: string | null   // null = overall budget (no specific category)
+  categoryName: string | null
+  categoryIcon: string | null
+  amount: string              // budget limit (Decimal as string)
+  month: string               // "YYYY-MM"
+  spent: string               // actual spending in the month (Decimal as string)
+  percentage: number          // spent / amount × 100 (can exceed 100)
+  createdAt: string
+  updatedAt: string
+}
+```
+
+---
+
+### `GET /budgets`
+
+**Query params** — optional
+```
+month  string   YYYY-MM format — defaults to current local month
+```
+
+**Response 200**
+```ts
+{ data: BudgetObject[] }
+```
+
+---
+
+### `POST /budgets`
+
+**Request body**
+```ts
+{
+  amount: number        // positive
+  month: string         // "YYYY-MM"
+  categoryId?: string   // UUID — omit for an overall budget
+}
+```
+
+**Response 201**
+```ts
+{ data: BudgetObject, message: "Budget created" }
+```
+
+---
+
+### `PATCH /budgets/:id`
+
+**Request body**
+```ts
+{
+  amount: number  // positive — only the limit can be updated
+}
+```
+
+**Response 200**
+```ts
+{ data: BudgetObject, message: "Budget updated" }
+```
+
+**Errors** — `404`
+
+---
+
+### `DELETE /budgets/:id`
+
+**Response 204** — no body
+
+**Errors** — `404`
+
+---
+
+## Recurring Transactions
+
+All scoped to the authenticated user. A recurring transaction is a template that generates real transactions automatically on each `nextRunDate`. The frequency determines how `nextRunDate` advances after each run.
+
+### Recurring transaction object shape
+```ts
+{
+  id: string
+  userId: string
+  type: "expense" | "income"
+  amount: string              // Decimal as string
+  categoryId: string | null
+  categoryName: string | null
+  categoryIcon: string | null
+  note: string | null
+  emotionTag: "need" | "impulse" | "emotional" | null
+  frequency: "daily" | "weekly" | "monthly" | "yearly"
+  startDate: string           // "YYYY-MM-DD"
+  endDate: string | null      // "YYYY-MM-DD" — null = no end
+  nextRunDate: string         // "YYYY-MM-DD" — date of the next automatic transaction
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+```
+
+---
+
+### `GET /recurring-transactions`
+Returns all recurring transactions for the authenticated user (no pagination).
+
+**Response 200**
+```ts
+{ data: RecurringTransactionObject[] }
+```
+
+---
+
+### `POST /recurring-transactions`
+
+**Request body**
+```ts
+{
+  type: "expense" | "income"
+  amount: number                                        // positive
+  frequency: "daily" | "weekly" | "monthly" | "yearly"
+  startDate: string                                     // "YYYY-MM-DD"
+  categoryId?: string                                   // UUID
+  note?: string
+  emotionTag?: "need" | "impulse" | "emotional"
+  endDate?: string                                      // "YYYY-MM-DD"
+}
+```
+
+**Response 201**
+```ts
+{ data: RecurringTransactionObject, message: "Recurring transaction created" }
+```
+
+---
+
+### `PATCH /recurring-transactions/:id`
+All fields are optional.
+
+**Request body**
+```ts
+{
+  amount?: number
+  frequency?: "daily" | "weekly" | "monthly" | "yearly"
+  categoryId?: string | null
+  note?: string | null
+  emotionTag?: "need" | "impulse" | "emotional" | null
+  endDate?: string | null   // "YYYY-MM-DD" — pass null to remove end date
+  isActive?: boolean        // set false to pause without deleting
+}
+```
+
+**Response 200**
+```ts
+{ data: RecurringTransactionObject, message: "Recurring transaction updated" }
+```
+
+**Errors** — `404`
+
+---
+
+### `DELETE /recurring-transactions/:id`
+
+**Response 204** — no body
+
+**Errors** — `404`
+
+---
+
+## Push Tokens
+
+Manages Expo push notification tokens for the authenticated user. Tokens are upserted — registering the same token again updates its metadata without creating a duplicate.
+
+### `POST /push-tokens`
+Registers (or updates) a push notification token.
+
+**Request body**
+```ts
+{
+  token: string      // Expo push token
+  platform?: string  // e.g. "ios" | "android" — defaults to "unknown"
+}
+```
+
+**Response 200**
+```ts
+{ data: { id: string; token: string; platform: string }, message: "Push token registered" }
+```
+
+---
+
+### `DELETE /push-tokens/:token`
+Removes a push token (e.g. on logout or notification opt-out). The `:token` path param is the Expo push token string.
+
+**Response 204** — no body
+
+**Errors** — `404` if token not found or not owned by user
 
 ---
 
@@ -1693,7 +2010,10 @@ Requires `admin` or `super_admin`. Manages global key/value settings.
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `trial_days` | integer | `30` | Trial period length for new registrations |
-| `group_discount_percent` | integer | `10` | Discount applied when a group reaches the minimum member threshold |
+| `group_discount_percent` | integer | `10` | Discount percentage applied when a group reaches the minimum member threshold |
+| `group_min_members` | integer | `3` | Minimum number of active group members required to activate the group discount |
+| `password_reset_expiry_hours` | integer | `1` | How long a password-reset link remains valid (hours) |
+| `csv_export_max_rows` | integer | `10000` | Maximum number of transaction rows returned by the CSV export endpoint |
 
 ### App Config object shape
 ```ts
@@ -1920,7 +2240,7 @@ Any protected endpoint (requireSubscription middleware)
 
 POST /groups/:id/members  or  DELETE /groups/:id/members/:userId
   → recalculates discount for all group members
-  → if activeMembers >= minMembers (from AppConfig): discountPercent = group_discount_percent
+  → if activeMembers >= group_min_members (AppConfig, default 3): discountPercent = group_discount_percent
   → otherwise: discountPercent = 0
 
 Effective plan price = priceAmount × (1 - discountPercent / 100)
