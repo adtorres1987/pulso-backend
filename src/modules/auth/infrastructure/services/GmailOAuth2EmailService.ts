@@ -5,6 +5,7 @@ import { IEmailService } from '../../domain/services/IEmailService';
 export class GmailOAuth2EmailService implements IEmailService {
   private readonly transporter = nodemailer.createTransport({
     service: 'gmail',
+    family: 4,
     auth: {
       type: 'OAuth2',
       user: env.GMAIL_USER,
@@ -12,7 +13,7 @@ export class GmailOAuth2EmailService implements IEmailService {
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       refreshToken: env.GOOGLE_REFRESH_TOKEN,
     },
-  });
+  } as nodemailer.TransportOptions & { family?: number });
 
   async sendPasswordReset(to: string, resetLink: string, expiryHours = 1): Promise<void> {
     const expiryLabel = expiryHours === 1 ? '1 hora / 1 hour' : `${expiryHours} horas / ${expiryHours} hours`;
