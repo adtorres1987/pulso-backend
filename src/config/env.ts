@@ -14,8 +14,6 @@ const envSchema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
   SMTP_FROM: z.string().default('no-reply@pulso.app'),
-  RESEND_API_KEY: z.string().default(''),
-  EMAIL_FROM: z.string().default('Pulso App <no-reply@pulso.app>'),
   GMAIL_USER: z.string().default(''),
   GOOGLE_CLIENT_ID: z.string().default(''),
   GOOGLE_CLIENT_SECRET: z.string().default(''),
