@@ -14,6 +14,8 @@ const envSchema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
   SMTP_FROM: z.string().default('no-reply@pulso.app'),
+  RESEND_API_KEY: z.string().default(''),
+  EMAIL_FROM: z.string().default('Pulso App <no-reply@pulso.app>'),
   FRONTEND_URL: z.string().default('http://localhost:5173'),
   CLOUDINARY_CLOUD_NAME: z.string().min(1),
   CLOUDINARY_API_KEY: z.string().min(1),

@@ -1,4 +1,4 @@
-import { EmotionTag, TransactionType } from '@prisma/client';
+import { EmotionTag, Prisma, TransactionType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../../../config/prisma';
 import { IDashboardRepository, DashboardData, MonthlyBreakdown, BudgetBreakdown, CategoryTrendData } from '../../domain/repositories/IDashboardRepository';
@@ -14,6 +14,8 @@ const transactionSelect = {
   createdAt: true,
   categoryId: true,
   category: { select: { id: true, name: true, icon: true } },
+  accountId: true,
+  account: { select: { id: true, name: true, type: true } },
 };
 
 const toResult = (raw: {
@@ -26,12 +28,15 @@ const toResult = (raw: {
   createdAt: Date;
   categoryId: string | null;
   category: { id: string; name: string; icon: string | null } | null;
+  accountId: string | null;
+  account: { id: string; name: string; type: string } | null;
 }): TransactionResult => ({ ...raw, amount: raw.amount.toString(), images: [] });
 
 export class PrismaDashboardRepository implements IDashboardRepository {
-  async getDashboard(userId: string, startDate: Date, endDate: Date, page: number, limit: number): Promise<DashboardData> {
+  async getDashboard(userId: string, startDate: Date, endDate: Date, page: number, limit: number, accountId?: string): Promise<DashboardData> {
     const dateFilter = { gte: startDate, lt: endDate };
-    const where = { userId, occurredAt: dateFilter };
+    const where = { userId, occurredAt: dateFilter, ...(accountId ? { accountId } : {}) };
+    const accountFilter = accountId ? Prisma.sql`AND "accountId" = ${accountId}` : Prisma.empty;
 
     const year = startDate.getUTCFullYear();
     const yearStart = new Date(Date.UTC(year, 0, 1));
@@ -71,6 +76,7 @@ export class PrismaDashboardRepository implements IDashboardRepository {
         WHERE "userId" = ${userId}
           AND "occurredAt" >= ${yearStart}
           AND "occurredAt" < ${yearEnd}
+          ${accountFilter}
         GROUP BY month, type
         ORDER BY month ASC
       `,

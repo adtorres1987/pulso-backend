@@ -81,6 +81,7 @@ export interface IDashboardRepository {
     endDate: Date,
     page: number,
     limit: number,
+    accountId?: string,
   ): Promise<DashboardData>;
   getCategoryTrend(userId: string, months: number): Promise<CategoryTrendData>;
 }

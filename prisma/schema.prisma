@@ -128,6 +128,7 @@ model User {
   person              Person?
   dailySnapshots      DailySnapshot[]
   transactions        Transaction[]
+  accounts            Account[]
   habits              Habit[]
   savingGoals         SavingGoal[]
   investmentProfiles  InvestmentProfile[]
@@ -177,10 +178,28 @@ model DailySnapshot {
   @@map("daily_snapshots")
 }
 
+model Account {
+  id             String        @id @default(uuid())
+  userId         String
+  name           String
+  type           String
+  initialBalance Decimal       @default(0) @db.Decimal(12, 2)
+  currency       String        @default("MXN")
+  isDefault      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+
+  @@map("accounts")
+}
+
 model Transaction {
   id                  String              @id @default(uuid())
   userId              String
   dailySnapshotId     String?
+  accountId           String?
   amount              Decimal
   type                TransactionType
   emotionTag          EmotionTag?
@@ -192,6 +211,7 @@ model Transaction {
   dailySnapshot       DailySnapshot?      @relation(fields: [dailySnapshotId], references: [id])
   category            Category?           @relation(fields: [categoryId], references: [id])
   categoryId          String?
+  account             Account?            @relation(fields: [accountId], references: [id], onDelete: SetNull)
   groupExpenseShare   GroupExpenseShare?
   images              TransactionImage[]
 

@@ -16,12 +16,15 @@ export interface TransactionResult {
   createdAt: Date;
   categoryId: string | null;
   category: { id: string; name: string; icon: string | null } | null;
+  accountId: string | null;
+  account: { id: string; name: string; type: string } | null;
   images: TransactionImageResult[];
 }
 
 export interface TransactionFilters {
   type?: 'expense' | 'income';
   categoryId?: string;
+  accountId?: string;
   emotionTag?: 'need' | 'impulse' | 'emotional';
   startDate?: Date;
   endDate?: Date;
@@ -38,6 +41,7 @@ export interface CreateTransactionData {
   note?: string;
   occurredAt: Date;
   categoryId?: string;
+  accountId?: string;
   dailySnapshotId?: string;
 }
 
@@ -48,6 +52,7 @@ export interface UpdateTransactionData {
   note?: string;
   occurredAt?: Date;
   categoryId?: string;
+  accountId?: string | null;
 }
 
 export interface PaginatedTransactions {

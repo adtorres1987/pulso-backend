@@ -21,6 +21,8 @@ const transactionSelect = {
   createdAt: true,
   categoryId: true,
   category: { select: { id: true, name: true, icon: true } },
+  accountId: true,
+  account: { select: { id: true, name: true, type: true } },
   images: { select: { id: true, transactionId: true, url: true, publicId: true, createdAt: true }, orderBy: { createdAt: 'asc' as const } },
 };
 
@@ -34,6 +36,8 @@ type RawTransaction = {
   createdAt: Date;
   categoryId: string | null;
   category: { id: string; name: string; icon: string | null } | null;
+  accountId: string | null;
+  account: { id: string; name: string; type: string } | null;
   images: { id: string; transactionId: string; url: string; publicId: string; createdAt: Date }[];
 };
 
@@ -65,6 +69,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
             },
           }
         : {}),
+      ...(filters.accountId && { accountId: filters.accountId }),
       ...(filters.search && {
         OR: [
           { note: { contains: filters.search, mode: 'insensitive' as const } },
@@ -94,6 +99,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         note: data.note,
         occurredAt: data.occurredAt,
         categoryId: data.categoryId,
+        accountId: data.accountId,
         dailySnapshotId: data.dailySnapshotId,
       },
       select: transactionSelect,
@@ -111,6 +117,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         ...(data.note !== undefined && { note: data.note }),
         ...(data.occurredAt !== undefined && { occurredAt: data.occurredAt }),
         ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
+        ...(data.accountId !== undefined && { accountId: data.accountId }),
       },
       select: transactionSelect,
     });

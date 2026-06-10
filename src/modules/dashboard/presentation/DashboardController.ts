@@ -23,8 +23,9 @@ export class DashboardController {
 
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const accountId = req.query.accountId as string | undefined;
 
-      const result = await this.getDashboardUseCase.execute(req.userId!, month, page, limit);
+      const result = await this.getDashboardUseCase.execute(req.userId!, month, page, limit, accountId);
       sendSuccess(res, result);
     } catch (err) {
       next(err);
