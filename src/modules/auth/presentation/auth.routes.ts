@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { PrismaUserRepository } from '../infrastructure/repositories/PrismaUserRepository';
 import { JwtService } from '../infrastructure/services/JwtService';
 import { RedisTokenBlacklistService } from '../infrastructure/services/RedisTokenBlacklistService';
-import { ResendEmailService } from '../infrastructure/services/ResendEmailService';
+import { GmailOAuth2EmailService } from '../infrastructure/services/GmailOAuth2EmailService';
 import { RegisterUserUseCase } from '../application/use-cases/RegisterUserUseCase';
 import { LoginUseCase } from '../application/use-cases/LoginUseCase';
 import { RefreshTokenUseCase } from '../application/use-cases/RefreshTokenUseCase';
@@ -26,7 +26,7 @@ const router = Router();
 const userRepository = new PrismaUserRepository();
 const jwtService = new JwtService();
 const blacklistService = new RedisTokenBlacklistService();
-const emailService = new ResendEmailService();
+const emailService = new GmailOAuth2EmailService();
 const createTrialSubscription = new CreateTrialSubscriptionUseCase(
   new PrismaSubscriptionRepository(),
   new PrismaSubscriptionPlanRepository(),
