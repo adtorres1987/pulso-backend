@@ -17,6 +17,7 @@ import { IncludeShareInPersonalUseCase } from '../application/use-cases/IncludeS
 import { UpdateMemberPercentageUseCase } from '../application/use-cases/UpdateMemberPercentageUseCase';
 import { AddGroupExpenseImageUseCase } from '../application/use-cases/AddGroupExpenseImageUseCase';
 import { RemoveGroupExpenseImageUseCase } from '../application/use-cases/RemoveGroupExpenseImageUseCase';
+import { ScanGroupExpenseReceiptUseCase } from '../application/use-cases/ScanGroupExpenseReceiptUseCase';
 import { sendSuccess } from '../../../utils/response';
 
 export class GroupController {
@@ -37,6 +38,7 @@ export class GroupController {
     private readonly updateMemberPct: UpdateMemberPercentageUseCase,
     private readonly addExpenseImage: AddGroupExpenseImageUseCase,
     private readonly removeExpenseImageUC: RemoveGroupExpenseImageUseCase,
+    private readonly scanReceiptUC: ScanGroupExpenseReceiptUseCase,
   ) {}
 
   index = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -149,6 +151,14 @@ export class GroupController {
     try {
       await this.removeExpenseImageUC.execute(req.params.id, req.params.expenseId, req.params.imageId, req.userId!);
       sendSuccess(res, null, 204);
+    } catch (err) { next(err); }
+  };
+
+  scanReceipt = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.file) throw new AppError('No image provided', 400);
+      const result = await this.scanReceiptUC.execute(req.file.buffer, req.file.mimetype);
+      sendSuccess(res, result);
     } catch (err) { next(err); }
   };
 }

@@ -20,6 +20,7 @@ import { IncludeShareInPersonalUseCase } from '../application/use-cases/IncludeS
 import { UpdateMemberPercentageUseCase } from '../application/use-cases/UpdateMemberPercentageUseCase';
 import { AddGroupExpenseImageUseCase } from '../application/use-cases/AddGroupExpenseImageUseCase';
 import { RemoveGroupExpenseImageUseCase } from '../application/use-cases/RemoveGroupExpenseImageUseCase';
+import { ScanGroupExpenseReceiptUseCase } from '../application/use-cases/ScanGroupExpenseReceiptUseCase';
 import { GroupController } from './GroupController';
 import {
   validateAddMember,
@@ -54,9 +55,12 @@ const controller = new GroupController(
   new UpdateMemberPercentageUseCase(groupRepo),
   new AddGroupExpenseImageUseCase(groupRepo),
   new RemoveGroupExpenseImageUseCase(groupRepo),
+  new ScanGroupExpenseReceiptUseCase(),
 );
 
 const auth = [authenticate, requireSubscription];
+
+router.post('/scan-receipt', ...auth, uploadImage, controller.scanReceipt);
 
 router.get('/', ...auth, controller.index);
 router.get('/:id', ...auth, controller.show);
