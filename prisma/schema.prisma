@@ -432,19 +432,32 @@ model GroupMember {
 }
 
 model GroupExpense {
-  id          String             @id @default(uuid())
+  id          String                @id @default(uuid())
   groupId     String
   paidById    String
   amount      Decimal
   description String
   occurredAt  DateTime
-  createdAt   DateTime           @default(now())
+  createdAt   DateTime              @default(now())
 
-  group       Group              @relation(fields: [groupId], references: [id])
-  paidBy      User               @relation("GroupExpensePayer", fields: [paidById], references: [id])
+  group       Group                 @relation(fields: [groupId], references: [id])
+  paidBy      User                  @relation("GroupExpensePayer", fields: [paidById], references: [id])
   shares      GroupExpenseShare[]
+  images      GroupExpenseImage[]
 
   @@map("group_expenses")
+}
+
+model GroupExpenseImage {
+  id             String       @id @default(uuid())
+  groupExpenseId String
+  url            String
+  publicId       String
+  createdAt      DateTime     @default(now())
+
+  groupExpense   GroupExpense @relation(fields: [groupExpenseId], references: [id], onDelete: Cascade)
+
+  @@map("group_expense_images")
 }
 
 model GroupExpenseShare {

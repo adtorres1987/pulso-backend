@@ -18,6 +18,8 @@ import { UpdateGroupExpenseUseCase } from '../application/use-cases/UpdateGroupE
 import { DeleteGroupExpenseUseCase } from '../application/use-cases/DeleteGroupExpenseUseCase';
 import { IncludeShareInPersonalUseCase } from '../application/use-cases/IncludeShareInPersonalUseCase';
 import { UpdateMemberPercentageUseCase } from '../application/use-cases/UpdateMemberPercentageUseCase';
+import { AddGroupExpenseImageUseCase } from '../application/use-cases/AddGroupExpenseImageUseCase';
+import { RemoveGroupExpenseImageUseCase } from '../application/use-cases/RemoveGroupExpenseImageUseCase';
 import { GroupController } from './GroupController';
 import {
   validateAddMember,
@@ -27,6 +29,7 @@ import {
   validateUpdateGroupExpense,
   validateUpdateMemberPercentage,
 } from './validators/group.validator';
+import { uploadImage } from '../../../middlewares/upload';
 
 const router = Router();
 
@@ -49,6 +52,8 @@ const controller = new GroupController(
   new DeleteGroupExpenseUseCase(groupRepo),
   new IncludeShareInPersonalUseCase(groupRepo),
   new UpdateMemberPercentageUseCase(groupRepo),
+  new AddGroupExpenseImageUseCase(groupRepo),
+  new RemoveGroupExpenseImageUseCase(groupRepo),
 );
 
 const auth = [authenticate, requireSubscription];
@@ -69,5 +74,7 @@ router.post('/:id/expenses', ...auth, validateCreateGroupExpense, controller.sto
 router.patch('/:id/expenses/:expenseId', ...auth, validateUpdateGroupExpense, controller.patchExpense);
 router.delete('/:id/expenses/:expenseId', ...auth, controller.destroyExpense);
 router.patch('/:id/expenses/:expenseId/shares/:shareId/include', ...auth, controller.includeShareInPersonal);
+router.post('/:id/expenses/:expenseId/images', ...auth, uploadImage, controller.uploadExpenseImage);
+router.delete('/:id/expenses/:expenseId/images/:imageId', ...auth, controller.deleteExpenseImage);
 
 export default router;

@@ -39,6 +39,14 @@ export interface GroupExpenseSummaryResult {
   byMember: MemberExpenseSummary[];
 }
 
+export interface GroupExpenseImageResult {
+  id: string;
+  groupExpenseId: string;
+  url: string;
+  publicId: string;
+  createdAt: Date;
+}
+
 export interface GroupExpenseResult {
   id: string;
   groupId: string;
@@ -48,6 +56,7 @@ export interface GroupExpenseResult {
   occurredAt: Date;
   createdAt: Date;
   shares: GroupExpenseShareResult[];
+  images: GroupExpenseImageResult[];
 }
 
 export interface GroupExpenseShareResult {
@@ -108,4 +117,6 @@ export interface IGroupRepository {
   includeShareInPersonal(shareId: string, transactionId: string): Promise<GroupExpenseShareResult>;
   unlinkShareByTransactionId(transactionId: string): Promise<void>;
   getExpenseSummary(groupId: string, startDate: Date, endDate: Date): Promise<GroupExpenseSummaryData>;
+  addExpenseImage(expenseId: string, url: string, publicId: string): Promise<GroupExpenseImageResult>;
+  removeExpenseImage(imageId: string): Promise<GroupExpenseImageResult>;
 }

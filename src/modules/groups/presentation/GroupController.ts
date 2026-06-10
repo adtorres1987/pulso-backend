@@ -15,6 +15,8 @@ import { UpdateGroupExpenseUseCase } from '../application/use-cases/UpdateGroupE
 import { DeleteGroupExpenseUseCase } from '../application/use-cases/DeleteGroupExpenseUseCase';
 import { IncludeShareInPersonalUseCase } from '../application/use-cases/IncludeShareInPersonalUseCase';
 import { UpdateMemberPercentageUseCase } from '../application/use-cases/UpdateMemberPercentageUseCase';
+import { AddGroupExpenseImageUseCase } from '../application/use-cases/AddGroupExpenseImageUseCase';
+import { RemoveGroupExpenseImageUseCase } from '../application/use-cases/RemoveGroupExpenseImageUseCase';
 import { sendSuccess } from '../../../utils/response';
 
 export class GroupController {
@@ -33,6 +35,8 @@ export class GroupController {
     private readonly deleteExpenseUC: DeleteGroupExpenseUseCase,
     private readonly includeShare: IncludeShareInPersonalUseCase,
     private readonly updateMemberPct: UpdateMemberPercentageUseCase,
+    private readonly addExpenseImage: AddGroupExpenseImageUseCase,
+    private readonly removeExpenseImageUC: RemoveGroupExpenseImageUseCase,
   ) {}
 
   index = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -130,6 +134,21 @@ export class GroupController {
     try {
       const member = await this.updateMemberPct.execute(req.params.id, req.userId!, req.params.userId, req.body.percentage);
       sendSuccess(res, member, 200, 'Percentage updated');
+    } catch (err) { next(err); }
+  };
+
+  uploadExpenseImage = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.file) throw new AppError('No image provided', 400);
+      const image = await this.addExpenseImage.execute(req.params.id, req.params.expenseId, req.userId!, req.file.buffer);
+      sendSuccess(res, image, 201, 'Image uploaded');
+    } catch (err) { next(err); }
+  };
+
+  deleteExpenseImage = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.removeExpenseImageUC.execute(req.params.id, req.params.expenseId, req.params.imageId, req.userId!);
+      sendSuccess(res, null, 204);
     } catch (err) { next(err); }
   };
 }

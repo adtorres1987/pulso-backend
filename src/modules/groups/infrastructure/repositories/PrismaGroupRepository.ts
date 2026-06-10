@@ -3,6 +3,7 @@ import { prisma } from '../../../../config/prisma';
 import {
   CreateGroupData,
   CreateGroupExpenseData,
+  GroupExpenseImageResult,
   GroupExpenseResult,
   GroupExpenseShareResult,
   GroupExpenseSummaryData,
@@ -36,7 +37,12 @@ const shareSelect = {
   transactionId: true,
 };
 
-const expenseInclude = { shares: { select: shareSelect } };
+const imageSelect = { id: true, groupExpenseId: true, url: true, publicId: true, createdAt: true };
+
+const expenseInclude = {
+  shares: { select: shareSelect },
+  images: { select: imageSelect, orderBy: { createdAt: 'asc' as const } },
+};
 
 const mapMember = (r: {
   id: string; userId: string; role: string; percentage: Decimal; joinedAt: Date;
@@ -59,10 +65,12 @@ const mapExpense = (r: {
   id: string; groupId: string; paidById: string; amount: Decimal;
   description: string; occurredAt: Date; createdAt: Date;
   shares: Array<{ id: string; groupMemberId: string; amount: Decimal; includeInPersonal: boolean; transactionId: string | null }>;
+  images: Array<{ id: string; groupExpenseId: string; url: string; publicId: string; createdAt: Date }>;
 }): GroupExpenseResult => ({
   ...r,
   amount: r.amount.toString(),
   shares: r.shares.map(mapShare),
+  images: r.images,
 });
 
 const mapGroup = (r: {
@@ -276,5 +284,19 @@ export class PrismaGroupRepository implements IGroupRepository {
       select: shareSelect,
     });
     return mapShare(row);
+  }
+
+  async addExpenseImage(expenseId: string, url: string, publicId: string): Promise<GroupExpenseImageResult> {
+    return prisma.groupExpenseImage.create({
+      data: { groupExpenseId: expenseId, url, publicId },
+      select: imageSelect,
+    });
+  }
+
+  async removeExpenseImage(imageId: string): Promise<GroupExpenseImageResult> {
+    return prisma.groupExpenseImage.delete({
+      where: { id: imageId },
+      select: imageSelect,
+    });
   }
 }
