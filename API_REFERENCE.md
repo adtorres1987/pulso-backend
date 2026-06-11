@@ -1247,10 +1247,40 @@ All group endpoints require an active or trial subscription (`requireSubscriptio
     id: string         // GroupMember id
     userId: string
     role: "owner" | "member"
+    percentage: number // configurable share percentage (0–100)
     joinedAt: string   // ISO datetime
+    person: {
+      firstName: string
+      lastName: string
+      avatarUrl: string | null
+    } | null
   }>
 }
 ```
+
+---
+
+### `POST /groups/scan-receipt`
+Uploads a receipt image and uses AI (Claude Haiku) to extract pre-filled expense fields. The user must be authenticated. Returns best-effort extracted values — any field may be `null` if the model cannot determine it with confidence.
+
+**Request** — `multipart/form-data`
+```
+image   file   JPEG, PNG, GIF, or WebP
+```
+
+**Response 200**
+```ts
+{
+  data: {
+    amount: number | null       // total amount paid
+    date: string | null         // "YYYY-MM-DD"
+    description: string | null  // merchant / establishment name
+  }
+}
+```
+
+**Errors**
+- `422` — no image provided, unsupported format, or AI could not parse the receipt
 
 ---
 
@@ -1375,6 +1405,35 @@ Removes a member from the group. Only the group **owner** can remove members. Re
 
 ---
 
+### `PATCH /groups/:id/members/:userId/percentage`
+Updates a member's configurable share percentage. Only the group **owner** can call this endpoint.
+
+**Request body**
+```ts
+{
+  percentage: number  // 0–100
+}
+```
+
+**Response 200**
+```ts
+{
+  data: {
+    id: string
+    userId: string
+    role: "owner" | "member"
+    percentage: number
+    joinedAt: string
+    person: { firstName: string; lastName: string; avatarUrl: string | null } | null
+  }
+  message: "Member percentage updated"
+}
+```
+
+**Errors** — `403` (not the owner) · `404` (group or member not found) · `422`
+
+---
+
 ### `GET /groups/:id/expenses`
 Returns all expenses for the group. The authenticated user must be a member.
 
@@ -1402,6 +1461,12 @@ limit  integer   default: 20  (max 100)
         amount: string
         includeInPersonal: boolean
         transactionId: string | null
+      }>
+      images: Array<{
+        id: string
+        url: string
+        publicId: string
+        createdAt: string
       }>
     }>
     total: number
@@ -1434,9 +1499,11 @@ month  string   YYYY-MM format — defaults to current UTC month (e.g. 2025-05)
       firstName: string
       lastName: string
       avatarUrl: string | null
-      total: string            // sum of this member's shares in the month (Decimal as string)
-      percentage: string       // share of total, 2 decimal places (e.g. "66.67") — "0.00" if no expenses
-    }>                         // all group members always included
+      total: string              // sum of this member's shares in the month (Decimal as string)
+      percentage: string         // share of total, 2 decimal places (e.g. "66.67") — "0.00" if no expenses
+      responsibilityPct: string  // member's configured percentage (from GroupMember.percentage)
+      balance: string            // total minus what the member paid (negative = they are owed money)
+    }>                           // all group members always included
   }
 }
 ```
@@ -1479,6 +1546,12 @@ Records a shared expense. The `shares` array defines how the total is split amon
       amount: string         // serialized Decimal
       includeInPersonal: boolean
       transactionId: string | null  // null until linked to a personal transaction
+    }>
+    images: Array<{
+      id: string
+      url: string
+      publicId: string
+      createdAt: string
     }>
   }
   message: "Expense created"
@@ -1524,6 +1597,12 @@ Updates a group expense. Only the original payer (`paidById`) or a group owner m
       includeInPersonal: boolean
       transactionId: string | null
     }>
+    images: Array<{
+      id: string
+      url: string
+      publicId: string
+      createdAt: string
+    }>
   }
   message: "Expense updated"
 }
@@ -1541,6 +1620,41 @@ Deletes a group expense and all its shares. Only the original payer (`paidById`)
 **Response 204** — no body.
 
 **Errors** — `403` · `404`
+
+---
+
+### `POST /groups/:id/expenses/:expenseId/images`
+Uploads a receipt image for a group expense and stores it in Cloudinary. The authenticated user must be a group member.
+
+**Request** — `multipart/form-data`
+```
+image   file   JPEG, PNG, GIF, or WebP
+```
+
+**Response 201**
+```ts
+{
+  data: {
+    id: string
+    groupExpenseId: string
+    url: string
+    publicId: string
+    createdAt: string
+  }
+  message: "Image uploaded"
+}
+```
+
+**Errors** — `404` (group or expense not found)
+
+---
+
+### `DELETE /groups/:id/expenses/:expenseId/images/:imageId`
+Deletes a group expense image from Cloudinary and removes the record. The authenticated user must be a group member.
+
+**Response 204** — no body.
+
+**Errors** — `404` (group, expense, or image not found)
 
 ---
 
@@ -1769,6 +1883,98 @@ Removes a push token (e.g. on logout or notification opt-out). The `:token` path
 **Response 204** — no body
 
 **Errors** — `404` if token not found or not owned by user
+
+---
+
+## Accounts
+
+Financial accounts for organizing transactions. Each user can have multiple accounts. `currentBalance` is computed as `initialBalance` + sum of all linked transactions (income adds, expense subtracts).
+
+### Account object shape
+```ts
+{
+  id: string
+  userId: string
+  name: string
+  type: "cash" | "debit" | "credit" | "savings"
+  initialBalance: string   // Decimal as string
+  currentBalance: string   // Decimal as string — computed
+  currency: string         // 3-char ISO code, default "USD"
+  isDefault: boolean
+  createdAt: string
+  updatedAt: string
+}
+```
+
+---
+
+### `GET /accounts`
+Returns all accounts for the authenticated user.
+
+**Response 200**
+```ts
+{
+  data: {
+    items: AccountObject[]
+    total: number
+    page: number
+    limit: number
+  }
+}
+```
+
+---
+
+### `POST /accounts`
+
+**Request body**
+```ts
+{
+  name: string                                    // min 1, max 100 chars
+  type: "cash" | "debit" | "credit" | "savings"
+  initialBalance?: number                         // default: 0
+  currency?: string                               // 3-char ISO code — default: "USD"
+  isDefault?: boolean                             // default: false
+}
+```
+
+**Response 201**
+```ts
+{ data: AccountObject, message: "Account created" }
+```
+
+**Errors** — `422`
+
+---
+
+### `PATCH /accounts/:id`
+Updates an account. All fields are optional.
+
+**Request body**
+```ts
+{
+  name?: string
+  type?: "cash" | "debit" | "credit" | "savings"
+  initialBalance?: number
+  currency?: string
+  isDefault?: boolean
+}
+```
+
+**Response 200**
+```ts
+{ data: AccountObject, message: "Account updated" }
+```
+
+**Errors** — `404` · `422`
+
+---
+
+### `DELETE /accounts/:id`
+
+**Response 204** — no body
+
+**Errors** — `404`
 
 ---
 
