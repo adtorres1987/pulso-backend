@@ -24,6 +24,7 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z.string().min(1),
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
+  ANTHROPIC_API_KEY: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);
