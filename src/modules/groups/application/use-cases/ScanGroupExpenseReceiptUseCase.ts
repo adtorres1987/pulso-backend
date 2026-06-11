@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import Anthropic, { APIError } from '@anthropic-ai/sdk';
 import { AppError } from '../../../../middlewares/errorHandler';
 
 export interface ScanReceiptResult {
@@ -26,20 +26,29 @@ export class ScanGroupExpenseReceiptUseCase {
       ? (mimeType as ValidMime)
       : 'image/jpeg';
 
-    const response = await this.client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 256,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mediaType, data: buffer.toString('base64') },
-          },
-          { type: 'text', text: PROMPT },
-        ],
-      }],
-    });
+    let response: Anthropic.Message;
+    try {
+      response = await this.client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 256,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: mediaType, data: buffer.toString('base64') },
+            },
+            { type: 'text', text: PROMPT },
+          ],
+        }],
+      });
+    } catch (err) {
+      if (err instanceof APIError) {
+        // Surface billing / auth errors clearly instead of a generic 500
+        throw new AppError(err.message, err.status ?? 502);
+      }
+      throw err;
+    }
 
     const text = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '{}';
 
