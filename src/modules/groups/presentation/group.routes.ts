@@ -30,7 +30,7 @@ import {
   validateUpdateGroupExpense,
   validateUpdateMemberPercentage,
 } from './validators/group.validator';
-import { uploadImage } from '../../../middlewares/upload';
+import { uploadImage, uploadImageOrPdf } from '../../../middlewares/upload';
 
 const router = Router();
 
@@ -60,7 +60,7 @@ const controller = new GroupController(
 
 const auth = [authenticate, requireSubscription];
 
-router.post('/scan-receipt', ...auth, uploadImage, controller.scanReceipt);
+router.post('/scan-receipt', ...auth, uploadImageOrPdf, controller.scanReceipt);
 
 router.get('/', ...auth, controller.index);
 router.get('/:id', ...auth, controller.show);

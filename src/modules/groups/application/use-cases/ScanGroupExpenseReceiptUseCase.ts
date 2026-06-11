@@ -1,4 +1,5 @@
 import Anthropic, { APIError } from '@anthropic-ai/sdk';
+import type { ContentBlockParam, DocumentBlockParam, ImageBlockParam } from '@anthropic-ai/sdk/resources/messages/messages';
 import { AppError } from '../../../../middlewares/errorHandler';
 
 export interface ScanReceiptResult {
@@ -7,10 +8,13 @@ export interface ScanReceiptResult {
   description: string | null;
 }
 
-const PROMPT = `Extract from this receipt or invoice: the total amount paid, the date, and the merchant or establishment name.
+const PROMPT = `Extract from this receipt, invoice or PDF document: the total amount paid, the date, and the merchant or establishment name.
 Return ONLY a valid JSON object with no extra text or markdown:
 {"amount": <number or null>, "date": "<YYYY-MM-DD or null>", "description": "<merchant name or null>"}
 Use null for any field you cannot determine with confidence.`;
+
+const VALID_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
+type ValidImageMime = typeof VALID_IMAGE_TYPES[number];
 
 export class ScanGroupExpenseReceiptUseCase {
   private client: Anthropic;
@@ -20,11 +24,23 @@ export class ScanGroupExpenseReceiptUseCase {
   }
 
   async execute(buffer: Buffer, mimeType: string): Promise<ScanReceiptResult> {
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
-    type ValidMime = typeof validTypes[number];
-    const mediaType: ValidMime = (validTypes as readonly string[]).includes(mimeType)
-      ? (mimeType as ValidMime)
-      : 'image/jpeg';
+    const data = buffer.toString('base64');
+
+    const fileBlock: ContentBlockParam = mimeType === 'application/pdf'
+      ? ({
+          type: 'document',
+          source: { type: 'base64', media_type: 'application/pdf', data },
+        } satisfies DocumentBlockParam)
+      : ({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: (VALID_IMAGE_TYPES as readonly string[]).includes(mimeType)
+              ? (mimeType as ValidImageMime)
+              : 'image/jpeg',
+            data,
+          },
+        } satisfies ImageBlockParam);
 
     let response: Anthropic.Message;
     try {
@@ -33,32 +49,23 @@ export class ScanGroupExpenseReceiptUseCase {
         max_tokens: 256,
         messages: [{
           role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: mediaType, data: buffer.toString('base64') },
-            },
-            { type: 'text', text: PROMPT },
-          ],
+          content: [fileBlock, { type: 'text', text: PROMPT }],
         }],
       });
     } catch (err) {
       if (err instanceof APIError) {
-        // Surface billing / auth errors clearly instead of a generic 500
         throw new AppError(err.message, err.status ?? 502);
       }
       throw err;
     }
 
     const raw = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '{}';
-    // Strip markdown code fences the model sometimes adds despite instructions
     const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
     let parsed: { amount?: unknown; date?: unknown; description?: unknown };
     try {
       parsed = JSON.parse(text) as typeof parsed;
     } catch {
-      // Last resort: extract the first {...} block from the response
       const match = raw.match(/\{[\s\S]*\}/);
       if (match) {
         try {

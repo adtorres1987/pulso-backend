@@ -156,7 +156,7 @@ export class GroupController {
 
   scanReceipt = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      if (!req.file) throw new AppError('No image provided', 400);
+      if (!req.file) throw new AppError('No file provided', 400);
       const result = await this.scanReceiptUC.execute(req.file.buffer, req.file.mimetype);
       sendSuccess(res, result);
     } catch (err) { next(err); }
