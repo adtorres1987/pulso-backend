@@ -3,6 +3,7 @@ export interface TransactionImageResult {
   transactionId: string;
   url: string;
   publicId: string;
+  imageType: string;
   createdAt: Date;
 }
 
@@ -66,6 +67,6 @@ export interface ITransactionRepository {
   create(data: CreateTransactionData): Promise<TransactionResult>;
   update(id: string, data: UpdateTransactionData): Promise<TransactionResult>;
   delete(id: string): Promise<void>;
-  addImage(transactionId: string, url: string, publicId: string): Promise<TransactionImageResult>;
+  addImage(transactionId: string, url: string, publicId: string, imageType?: string): Promise<TransactionImageResult>;
   removeImage(imageId: string): Promise<TransactionImageResult>;
 }

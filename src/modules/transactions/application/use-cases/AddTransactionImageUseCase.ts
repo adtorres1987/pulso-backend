@@ -5,11 +5,11 @@ import { ITransactionRepository, TransactionImageResult } from '../../domain/rep
 export class AddTransactionImageUseCase {
   constructor(private readonly transactionRepository: ITransactionRepository) {}
 
-  async execute(transactionId: string, userId: string, buffer: Buffer): Promise<TransactionImageResult> {
+  async execute(transactionId: string, userId: string, buffer: Buffer, imageType = 'image'): Promise<TransactionImageResult> {
     const transaction = await this.transactionRepository.findByIdAndUser(transactionId, userId);
     if (!transaction) throw new AppError('Transaction not found', 404);
 
     const { url, publicId } = await cloudinaryService.upload(buffer, 'transaction_images');
-    return this.transactionRepository.addImage(transactionId, url, publicId);
+    return this.transactionRepository.addImage(transactionId, url, publicId, imageType);
   }
 }

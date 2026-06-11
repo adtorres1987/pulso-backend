@@ -3,8 +3,10 @@ import { z } from 'zod';
 const transactionTypeEnum = z.enum(['expense', 'income']);
 const emotionTagEnum = z.enum(['need', 'impulse', 'emotional']);
 
+const imageTypeEnum = z.enum(['image', 'invoice']);
+
 export const CreateTransactionSchema = z.object({
-  amount: z.number().positive(),
+  amount: z.coerce.number().positive(),
   type: transactionTypeEnum,
   emotionTag: emotionTagEnum.optional(),
   note: z.string().min(1).optional(),
@@ -12,16 +14,18 @@ export const CreateTransactionSchema = z.object({
   categoryId: z.string().uuid().optional(),
   accountId: z.string().uuid().optional(),
   dailySnapshotId: z.string().uuid().optional(),
+  imageType: imageTypeEnum.optional(),
 });
 
 export const UpdateTransactionSchema = z.object({
-  amount: z.number().positive().optional(),
+  amount: z.coerce.number().positive().optional(),
   type: transactionTypeEnum.optional(),
   emotionTag: emotionTagEnum.optional(),
   note: z.string().min(1).optional(),
   occurredAt: z.string().datetime().optional().transform((v) => (v ? new Date(v) : undefined)),
   categoryId: z.string().uuid().optional(),
   accountId: z.string().uuid().nullable().optional(),
+  imageType: imageTypeEnum.optional(),
 });
 
 export const TransactionFiltersSchema = z.object({

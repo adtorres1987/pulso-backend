@@ -36,8 +36,8 @@ const transactionController = new TransactionController(
 router.get('/export', authenticate, transactionController.exportCsv);
 router.get('/', authenticate, validateTransactionFilters, transactionController.getAll);
 router.get('/:id', authenticate, transactionController.getOne);
-router.post('/', authenticate, validateCreateTransaction, transactionController.create);
-router.patch('/:id', authenticate, validateUpdateTransaction, transactionController.update);
+router.post('/', authenticate, uploadImage, validateCreateTransaction, transactionController.create);
+router.patch('/:id', authenticate, uploadImage, validateUpdateTransaction, transactionController.update);
 router.delete('/:id', authenticate, transactionController.remove);
 
 router.post('/:id/images', authenticate, uploadImage, transactionController.uploadImage);

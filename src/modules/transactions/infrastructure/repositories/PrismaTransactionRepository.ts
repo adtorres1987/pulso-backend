@@ -23,7 +23,7 @@ const transactionSelect = {
   category: { select: { id: true, name: true, icon: true } },
   accountId: true,
   account: { select: { id: true, name: true, type: true } },
-  images: { select: { id: true, transactionId: true, url: true, publicId: true, createdAt: true }, orderBy: { createdAt: 'asc' as const } },
+  images: { select: { id: true, transactionId: true, url: true, publicId: true, imageType: true, createdAt: true }, orderBy: { createdAt: 'asc' as const } },
 };
 
 type RawTransaction = {
@@ -38,7 +38,7 @@ type RawTransaction = {
   category: { id: string; name: string; icon: string | null } | null;
   accountId: string | null;
   account: { id: string; name: string; type: string } | null;
-  images: { id: string; transactionId: string; url: string; publicId: string; createdAt: Date }[];
+  images: { id: string; transactionId: string; url: string; publicId: string; imageType: string; createdAt: Date }[];
 };
 
 const toResult = (raw: RawTransaction): TransactionResult => ({
@@ -128,9 +128,9 @@ export class PrismaTransactionRepository implements ITransactionRepository {
     await prisma.transaction.delete({ where: { id } });
   }
 
-  async addImage(transactionId: string, url: string, publicId: string): Promise<TransactionImageResult> {
+  async addImage(transactionId: string, url: string, publicId: string, imageType = 'image'): Promise<TransactionImageResult> {
     return prisma.transactionImage.create({
-      data: { transactionId, url, publicId },
+      data: { transactionId, url, publicId, imageType },
     });
   }
 

@@ -48,6 +48,13 @@ export class TransactionController {
   create = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const transaction = await this.createTransaction.execute(req.userId!, req.body);
+      if (req.file) {
+        const imageType: string = (req.body as { imageType?: string }).imageType ?? 'image';
+        await this.addTransactionImage.execute(transaction.id, req.userId!, req.file.buffer, imageType);
+        const withImage = await this.getTransactionById.execute(transaction.id, req.userId!);
+        sendSuccess(res, withImage, 201, 'Transaction created');
+        return;
+      }
       sendSuccess(res, transaction, 201, 'Transaction created');
     } catch (err) {
       next(err);
@@ -57,6 +64,13 @@ export class TransactionController {
   update = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const transaction = await this.updateTransaction.execute(req.params.id, req.userId!, req.body);
+      if (req.file) {
+        const imageType: string = (req.body as { imageType?: string }).imageType ?? 'image';
+        await this.addTransactionImage.execute(transaction.id, req.userId!, req.file.buffer, imageType);
+        const withImage = await this.getTransactionById.execute(transaction.id, req.userId!);
+        sendSuccess(res, withImage, 200, 'Transaction updated');
+        return;
+      }
       sendSuccess(res, transaction, 200, 'Transaction updated');
     } catch (err) {
       next(err);
@@ -75,7 +89,8 @@ export class TransactionController {
   uploadImage = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.file) throw new AppError('No image provided', 400);
-      const image = await this.addTransactionImage.execute(req.params.id, req.userId!, req.file.buffer);
+      const imageType: string = (req.body as { imageType?: string }).imageType ?? 'image';
+      const image = await this.addTransactionImage.execute(req.params.id, req.userId!, req.file.buffer, imageType);
       sendSuccess(res, image, 201, 'Image uploaded');
     } catch (err) {
       next(err);

@@ -8,6 +8,7 @@ export class UpdateTransactionUseCase {
   async execute(id: string, userId: string, dto: UpdateTransactionDto): Promise<TransactionResult> {
     const transaction = await this.transactionRepository.findByIdAndUser(id, userId);
     if (!transaction) throw new AppError('Transaction not found', 404);
-    return this.transactionRepository.update(id, dto);
+    const { imageType: _, ...data } = dto;
+    return this.transactionRepository.update(id, data);
   }
 }
