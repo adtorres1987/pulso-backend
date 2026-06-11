@@ -50,13 +50,25 @@ export class ScanGroupExpenseReceiptUseCase {
       throw err;
     }
 
-    const text = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '{}';
+    const raw = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '{}';
+    // Strip markdown code fences the model sometimes adds despite instructions
+    const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
     let parsed: { amount?: unknown; date?: unknown; description?: unknown };
     try {
       parsed = JSON.parse(text) as typeof parsed;
     } catch {
-      throw new AppError('Could not parse receipt data from image', 422);
+      // Last resort: extract the first {...} block from the response
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          parsed = JSON.parse(match[0]) as typeof parsed;
+        } catch {
+          throw new AppError('Could not parse receipt data from image', 422);
+        }
+      } else {
+        throw new AppError('Could not parse receipt data from image', 422);
+      }
     }
 
     const amount = typeof parsed.amount === 'number' && parsed.amount > 0 ? parsed.amount : null;
