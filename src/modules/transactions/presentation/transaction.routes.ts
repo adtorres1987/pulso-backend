@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { PrismaTransactionRepository } from '../infrastructure/repositories/PrismaTransactionRepository';
 import { PrismaGroupRepository } from '../../groups/infrastructure/repositories/PrismaGroupRepository';
 import { PrismaAppConfigRepository } from '../../app-config/infrastructure/repositories/PrismaAppConfigRepository';
+import { PrismaCategoryRepository } from '../../categories/infrastructure/repositories/PrismaCategoryRepository';
 import { GetAllTransactionsUseCase } from '../application/use-cases/GetAllTransactionsUseCase';
 import { GetTransactionByIdUseCase } from '../application/use-cases/GetTransactionByIdUseCase';
 import { CreateTransactionUseCase } from '../application/use-cases/CreateTransactionUseCase';
@@ -22,10 +23,11 @@ const router = Router();
 
 const transactionRepository = new PrismaTransactionRepository();
 const groupRepository = new PrismaGroupRepository();
+const categoryRepository = new PrismaCategoryRepository();
 const transactionController = new TransactionController(
   new GetAllTransactionsUseCase(transactionRepository),
   new GetTransactionByIdUseCase(transactionRepository),
-  new CreateTransactionUseCase(transactionRepository),
+  new CreateTransactionUseCase(transactionRepository, categoryRepository),
   new UpdateTransactionUseCase(transactionRepository),
   new DeleteTransactionUseCase(transactionRepository, groupRepository),
   new AddTransactionImageUseCase(transactionRepository),
