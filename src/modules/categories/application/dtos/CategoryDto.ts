@@ -1,17 +1,20 @@
 import { z } from 'zod';
 
 const transactionTypeEnum = z.enum(['expense', 'income']);
+const emotionTagEnum = z.enum(['need', 'impulse', 'emotional']);
 
 export const CreateCategorySchema = z.object({
   name: z.string().min(1),
   icon: z.string().min(1).optional(),
   type: transactionTypeEnum,
+  emotionTag: emotionTagEnum.optional(),
 });
 
 export const UpdateCategorySchema = z.object({
   name: z.string().min(1).optional(),
   icon: z.string().min(1).optional(),
   type: transactionTypeEnum.optional(),
+  emotionTag: emotionTagEnum.nullable().optional(),
 });
 
 export type CreateCategoryDto = z.infer<typeof CreateCategorySchema>;

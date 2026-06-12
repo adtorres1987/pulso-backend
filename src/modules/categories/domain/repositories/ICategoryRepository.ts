@@ -4,6 +4,7 @@ export interface CategoryResult {
   name: string;
   icon: string | null;
   type: string;
+  emotionTag: string | null;
   isSystem: boolean;
 }
 
@@ -12,6 +13,7 @@ export interface CreateCategoryData {
   name: string;
   icon?: string;
   type: 'expense' | 'income';
+  emotionTag?: 'need' | 'impulse' | 'emotional';
   isSystem?: boolean;
 }
 
@@ -19,6 +21,7 @@ export interface UpdateCategoryData {
   name?: string;
   icon?: string;
   type?: 'expense' | 'income';
+  emotionTag?: 'need' | 'impulse' | 'emotional' | null;
 }
 
 export interface PaginatedCategories {

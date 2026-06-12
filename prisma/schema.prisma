@@ -237,6 +237,7 @@ model Category {
   name         String
   icon         String?
   type         TransactionType
+  emotionTag   EmotionTag?
   isSystem     Boolean         @default(false)
   deletedAt    DateTime?
 

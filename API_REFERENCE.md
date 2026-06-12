@@ -71,6 +71,7 @@ All list endpoints support pagination via query params:
 | `RoleType` | `"super_admin"` \| `"admin"` \| `"support"` \| `"user"` |
 | `SubscriptionStatus` | `"trial"` \| `"active"` \| `"expired"` \| `"cancelled"` |
 | `GroupMemberRole` | `"owner"` \| `"member"` |
+| `ImageType` | `"image"` \| `"invoice"` |
 
 ---
 
@@ -733,6 +734,7 @@ limit       integer   default: 20  (max 100)
         transactionId: string
         url: string             // Cloudinary URL
         publicId: string
+        imageType: "image" | "invoice"  // "image" = receipt; "invoice" = factura
         createdAt: string
       }>                        // empty array if no images uploaded
     }>
@@ -755,7 +757,9 @@ limit       integer   default: 20  (max 100)
 
 ### `POST /transactions`
 
-**Request body**
+Accepts both `application/json` and `multipart/form-data`. Use multipart to upload a receipt or invoice in the same request.
+
+**`application/json` body**
 ```ts
 {
   amount: number              // positive
@@ -764,17 +768,26 @@ limit       integer   default: 20  (max 100)
   emotionTag?: "need" | "impulse" | "emotional"
   note?: string
   categoryId?: string         // UUID
+  accountId?: string          // UUID
   dailySnapshotId?: string    // UUID — link to today's snapshot
 }
 ```
 
-**Response 201** — created transaction
+**`multipart/form-data` fields** — same fields as above (amount as string or number), plus:
+```
+image      File                    // image/* only, max 5 MB (optional)
+imageType  "image" | "invoice"     // default "image" — ignored if no file provided
+```
+
+**Response 201** — created transaction (includes `images` array; populated if a file was uploaded)
 
 ---
 
 ### `PATCH /transactions/:id`
 
-**Request body** — all optional
+Accepts both `application/json` and `multipart/form-data`. Use multipart to add an image while updating fields.
+
+**`application/json` body** — all optional
 ```ts
 {
   amount?: number
@@ -783,10 +796,17 @@ limit       integer   default: 20  (max 100)
   emotionTag?: "need" | "impulse" | "emotional"
   note?: string
   categoryId?: string
+  accountId?: string | null
 }
 ```
 
-**Response 200** — updated transaction
+**`multipart/form-data` fields** — same optional fields, plus:
+```
+image      File                    // image/* only, max 5 MB (optional)
+imageType  "image" | "invoice"     // default "image" — ignored if no file provided
+```
+
+**Response 200** — updated transaction (includes `images` array; populated if a file was uploaded)
 
 ---
 
@@ -797,11 +817,12 @@ limit       integer   default: 20  (max 100)
 ---
 
 ### `POST /transactions/:id/images`
-Uploads an image to Cloudinary and attaches it to the transaction. Send as `multipart/form-data` with the file in the `image` field.
+Uploads an additional image to Cloudinary and attaches it to the transaction. Use this endpoint to add images after creation (for same-request upload see `POST /transactions` with multipart).
 
 **Request** — `Content-Type: multipart/form-data`
 ```
-image  File   // image/* only, max 5 MB
+image      File                    // image/* only, max 5 MB
+imageType  "image" | "invoice"     // default "image"
 ```
 
 **Response 201**
@@ -812,6 +833,7 @@ image  File   // image/* only, max 5 MB
     transactionId: string
     url: string        // Cloudinary URL
     publicId: string   // Cloudinary public ID
+    imageType: "image" | "invoice"
     createdAt: string
   }
   message: "Image uploaded"
@@ -831,7 +853,7 @@ Removes an image from Cloudinary and unlinks it from the transaction.
 
 **Errors** — `404` if image not found or not owned by user
 
-> **Note:** `GET /transactions` and `GET /transactions/:id` both include an `images` array in the response. Each entry has `{ id, transactionId, url, publicId, createdAt }`. The array is empty if no images have been uploaded.
+> **Note:** `GET /transactions` and `GET /transactions/:id` both include an `images` array in the response. Each entry has `{ id, transactionId, url, publicId, imageType, createdAt }`. `imageType` is `"image"` for receipts and `"invoice"` for facturas. The array is empty if no images have been uploaded.
 
 ---
 

@@ -1,4 +1,4 @@
-import { TransactionType } from '@prisma/client';
+import { EmotionTag, TransactionType } from '@prisma/client';
 import { prisma } from '../../../../config/prisma';
 import {
   CategoryResult,
@@ -14,6 +14,7 @@ const categorySelect = {
   name: true,
   icon: true,
   type: true,
+  emotionTag: true,
   isSystem: true,
 };
 
@@ -66,6 +67,7 @@ export class PrismaCategoryRepository implements ICategoryRepository {
         name: data.name,
         icon: data.icon,
         type: data.type as TransactionType,
+        emotionTag: data.emotionTag as EmotionTag | undefined,
         isSystem: data.isSystem ?? false,
       },
       select: categorySelect,
@@ -79,6 +81,7 @@ export class PrismaCategoryRepository implements ICategoryRepository {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.icon !== undefined && { icon: data.icon }),
         ...(data.type !== undefined && { type: data.type as TransactionType }),
+        ...('emotionTag' in data && { emotionTag: data.emotionTag as EmotionTag | null }),
       },
       select: categorySelect,
     });
